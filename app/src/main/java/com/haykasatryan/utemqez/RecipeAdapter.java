@@ -32,8 +32,12 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
     @Override
     public void onBindViewHolder(@NonNull RecipeViewHolder holder, int position) {
         Recipe recipe = recipeList.get(position);
-        holder.title.setText(recipe.title);
-        Picasso.get().load(recipe.image).into(holder.image);
+        holder.title.setText(recipe.getTitle()); // Use getter method
+
+        // Load image using Picasso
+        if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
+            Picasso.get().load(recipe.getImageUrl()).into(holder.image);
+        }
     }
 
     @Override

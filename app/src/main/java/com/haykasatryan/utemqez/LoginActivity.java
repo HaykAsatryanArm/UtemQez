@@ -20,6 +20,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -98,20 +99,48 @@ public class LoginActivity extends AppCompatActivity {
                 userPassword.requestFocus();
                 return;
             }
-            mAuth.signInWithEmailAndPassword(email,password).addOnCompleteListener(task -> {
-                if(task.isSuccessful())
-                {
-                    startActivity(new Intent(LoginActivity.this, HomeActivity.class));
-                }
-                else
-                {
-                    Toast.makeText(LoginActivity.this,
-                            "Please Check Your login Credentials",
-                            Toast.LENGTH_SHORT).show();
-                }
-
-            });
+            mAuth.signInWithEmailAndPassword(email, password)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            FirebaseUser user = mAuth.getCurrentUser();
+                            if (user != null && user.isEmailVerified()) {
+                                startActivity(new Intent(LoginActivity.this, HomeActivity.class));
+                                finish();
+                            } else {
+                                Toast.makeText(LoginActivity.this,
+                                        "Please verify your email before logging in.",
+                                        Toast.LENGTH_LONG).show();
+                                FirebaseAuth.getInstance().signOut();
+                            }
+                        } else {
+                            Toast.makeText(LoginActivity.this,
+                                    "Please check your login credentials.",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
         });
 
+    }
+
+    private void checkIfEmailVerified()
+    {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+        assert user != null;
+        if (user.isEmailVerified())
+        {
+            // user is verified, so you can finish this activity or send user to activity which you want.
+            finish();
+            Toast.makeText(LoginActivity.this, "Successfully logged in", Toast.LENGTH_SHORT).show();
+        }
+        else
+        {
+            // email is not verified, so just prompt the message to the user and restart this activity.
+            // NOTE: don't forget to log out the user.
+            FirebaseAuth.getInstance().signOut();
+
+            //restart this activity
+
+        }
     }
 }

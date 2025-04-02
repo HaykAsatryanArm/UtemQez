@@ -1,3 +1,27 @@
 <resources>
-    <string name="app_name">UtemQez</string>
+    <string name="app_name">Utemqez</string>
+    <string name="login">Login</string>
+    <string name="register">Register</string>
+    <string name="welcome_placeholder">Welcome</string>
+    <string name="category_title">Category</string>
+    <string name="popular_title">Popular</string>
+    <string name="breakfast">Breakfast</string>
+    <string name="salads">Salads</string>
+    <string name="dinner">Dinner</string>
+    <string name="snacks">Snacks</string>
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Password</string>
+    <string name="to_register">Don\'t have an account? Register</string>
+    <string name="forgot_password">Forgot Password? Reset</string>
+    <string name="profile_picture_desc">Profile Picture</string>
+    <string name="user_name_placeholder">User Name</string>
+    <string name="user_email_placeholder">user@example.com</string>
+    <string name="logout">Logout</string>
+    <string name="name_hint">Name</string>
+    <string name="confirm_password_hint">Confirm Password</string>
+    <string name="to_login">Already have an account? Login</string>
+    <string name="recipe_image_desc">Recipe Image</string>
+    <string name="recipe_title_placeholder">Recipe Title</string>
+    <string name="view_details">View Details →</string>
+    <string name="background_image_desc">Background Pattern</string>
 </resources>
