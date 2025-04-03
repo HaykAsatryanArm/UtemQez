@@ -7,5 +7,8 @@
     <color name="main">#70B9BE</color>
     <color name="dark">#29404F</color>
     <color name="secondary">#398489</color>
+    <color name="dark_teal">#2F4858</color>
+    <color name="dark_teal_60">#992F4858</color>
+    <color name="dark_teal_20">#332F4858</color>
     <color name="lavender">#8692f7</color>
 </resources>

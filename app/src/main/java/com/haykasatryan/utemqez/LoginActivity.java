@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Patterns;
+import android.view.MotionEvent;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -28,6 +29,7 @@ public class LoginActivity extends AppCompatActivity {
     TextView toRegLink, reset;
     EditText userEmail, userPassword;
     FirebaseAuth mAuth;
+    private boolean isPasswordVisible = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -120,6 +122,31 @@ public class LoginActivity extends AppCompatActivity {
                     });
         });
 
+        setupPasswordToggle(userPassword, () -> {
+            isPasswordVisible = !isPasswordVisible;
+            if (isPasswordVisible) {
+                userPassword.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+                userPassword.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_eye_off, 0);
+            } else {
+                userPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                userPassword.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_eye, 0);
+            }
+            userPassword.setSelection(userPassword.getText().length()); // Keep cursor at end
+        });
+
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void setupPasswordToggle(EditText editText, Runnable onToggle) {
+        editText.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                if (event.getRawX() >= (editText.getRight() - editText.getCompoundDrawables()[2].getBounds().width())) {
+                    onToggle.run();
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 
     private void checkIfEmailVerified()

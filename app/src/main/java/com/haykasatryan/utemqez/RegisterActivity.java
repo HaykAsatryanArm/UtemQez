@@ -2,10 +2,12 @@ package com.haykasatryan.utemqez;
 
 import static android.content.ContentValues.TAG;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Patterns;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -29,6 +31,8 @@ public class RegisterActivity extends AppCompatActivity {
     TextView toLogLink;
     EditText userName, userEmail, userPassword, userPasswordRe;
     FirebaseAuth mAuth;
+    private boolean isPasswordVisible = false;
+    private boolean isConfirmPasswordVisible = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,11 +46,51 @@ public class RegisterActivity extends AppCompatActivity {
         registerBtn = findViewById(R.id.registerBtn);
         toLogLink = findViewById(R.id.toLog);
 
+        registerBtn.setBackgroundResource(R.drawable.button_background);
+
         mAuth = FirebaseAuth.getInstance();
 
         toLogLink.setOnClickListener(v -> startActivity(new Intent(RegisterActivity.this, LoginActivity.class)));
 
         registerBtn.setOnClickListener(view -> registerUser());
+
+        setupPasswordToggle(userPassword, () -> {
+            isPasswordVisible = !isPasswordVisible;
+            if (isPasswordVisible) {
+                userPassword.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+                userPassword.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_eye_off, 0);
+            } else {
+                userPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                userPassword.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_eye, 0);
+            }
+            userPassword.setSelection(userPassword.getText().length()); // Keep cursor at end
+        });
+
+        // Set up password visibility toggle for userPasswordRe
+        setupPasswordToggle(userPasswordRe, () -> {
+            isConfirmPasswordVisible = !isConfirmPasswordVisible;
+            if (isConfirmPasswordVisible) {
+                userPasswordRe.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+                userPasswordRe.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_eye_off, 0);
+            } else {
+                userPasswordRe.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                userPasswordRe.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_eye, 0);
+            }
+            userPasswordRe.setSelection(userPasswordRe.getText().length()); // Keep cursor at end
+        });
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void setupPasswordToggle(EditText editText, Runnable onToggle) {
+        editText.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                if (event.getRawX() >= (editText.getRight() - editText.getCompoundDrawables()[2].getBounds().width())) {
+                    onToggle.run();
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 
     private void registerUser() {

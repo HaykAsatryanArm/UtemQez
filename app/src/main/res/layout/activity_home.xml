@@ -13,7 +13,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Background Image -->
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -26,7 +25,6 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.0" />
 
-        <!-- Header (Login/Register Buttons & Title) -->
         <LinearLayout
             android:id="@+id/header"
             android:layout_width="match_parent"
@@ -74,7 +72,6 @@
                 android:gravity="center"/>
         </LinearLayout>
 
-        <!-- Categories Title -->
         <TextView
             android:id="@+id/categoriesTitle"
             android:layout_width="match_parent"
@@ -88,7 +85,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Horizontal Scroll View for Categories -->
         <HorizontalScrollView
             android:id="@+id/categories"
             android:layout_width="match_parent"
@@ -158,7 +154,6 @@
             </LinearLayout>
         </HorizontalScrollView>
 
-        <!-- RecyclerView for Recipes (Horizontal Scrolling) -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recipeRecyclerView"
             android:layout_width="match_parent"
