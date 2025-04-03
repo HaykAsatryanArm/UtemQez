@@ -28,7 +28,7 @@ import java.util.Map;
 
 public class RegisterActivity extends AppCompatActivity {
     Button registerBtn;
-    TextView toLogLink;
+    TextView toLogLink, skip;
     EditText userName, userEmail, userPassword, userPasswordRe;
     FirebaseAuth mAuth;
     private boolean isPasswordVisible = false;
@@ -45,12 +45,14 @@ public class RegisterActivity extends AppCompatActivity {
         userPasswordRe = findViewById(R.id.passwordRe);
         registerBtn = findViewById(R.id.registerBtn);
         toLogLink = findViewById(R.id.toLog);
+        skip = findViewById(R.id.skip);
 
         registerBtn.setBackgroundResource(R.drawable.button_background);
 
         mAuth = FirebaseAuth.getInstance();
 
         toLogLink.setOnClickListener(v -> startActivity(new Intent(RegisterActivity.this, LoginActivity.class)));
+        skip.setOnClickListener(v -> startActivity(new Intent(RegisterActivity.this, HomeActivity.class)));
 
         registerBtn.setOnClickListener(view -> registerUser());
 

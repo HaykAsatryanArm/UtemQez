@@ -3,14 +3,5 @@
         <item name="android:fontFamily">@font/itim</item>
     </style>
 
-    <style name="Theme.UtemQez.Auth" parent="Base.Theme.UtemQez">
-        <item name="android:buttonStyle">@style/Widget.App.Button.Auth</item>
-    </style>
-
-    <style name="Widget.App.Button.Auth" parent="Widget.AppCompat.Button">
-        <item name="android:background">@drawable/button_background</item>
-    </style>
-
     <style name="Theme.UtemQez" parent="Base.Theme.UtemQez" />
-
 </resources>

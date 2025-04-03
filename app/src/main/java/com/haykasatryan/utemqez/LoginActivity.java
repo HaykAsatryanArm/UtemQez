@@ -26,7 +26,7 @@ import com.google.firebase.auth.FirebaseUser;
 public class LoginActivity extends AppCompatActivity {
 
     Button loginBtn;
-    TextView toRegLink, reset;
+    TextView toRegLink, reset, skip;
     EditText userEmail, userPassword;
     FirebaseAuth mAuth;
     private boolean isPasswordVisible = false;
@@ -47,10 +47,12 @@ public class LoginActivity extends AppCompatActivity {
         loginBtn = findViewById(R.id.loginBtn);
         toRegLink = findViewById(R.id.toReg);
         reset = findViewById(R.id.forgot);
+        skip = findViewById(R.id.skip);
 
         mAuth = FirebaseAuth.getInstance();
 
         toRegLink.setOnClickListener(v -> startActivity(new Intent(LoginActivity.this, RegisterActivity.class)));
+        skip.setOnClickListener(v -> startActivity(new Intent(LoginActivity.this, HomeActivity.class)));
 
         reset.setOnClickListener(v -> {
             String email= userEmail.getText().toString().trim();
