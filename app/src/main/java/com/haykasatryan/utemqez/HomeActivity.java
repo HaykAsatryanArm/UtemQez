@@ -125,7 +125,7 @@ public class HomeActivity extends AppCompatActivity {
         }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
+    // In HomeActivity.java
     private void fetchRecipesByCategory(String selectedCategory) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         db.collection("recipes")
@@ -135,7 +135,7 @@ public class HomeActivity extends AppCompatActivity {
                         categoryRecipeList.clear();
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             Recipe recipe = document.toObject(Recipe.class);
-                            if (recipe.getCategory().contains(selectedCategory)) {
+                            if (recipe.getCategory() != null && recipe.getCategory().contains(selectedCategory)) {
                                 categoryRecipeList.add(recipe);
                             }
                         }
@@ -153,7 +153,6 @@ public class HomeActivity extends AppCompatActivity {
                 });
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     private void fetchAllRecipes() {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         db.collection("recipes")

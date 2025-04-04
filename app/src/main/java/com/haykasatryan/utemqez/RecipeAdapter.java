@@ -1,8 +1,10 @@
 package com.haykasatryan.utemqez;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -38,6 +40,12 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
         if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
             Picasso.get().load(recipe.getImageUrl()).into(holder.image);
         }
+
+        holder.viewDetailsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(holder.itemView.getContext(), RecipeDetailActivity.class);
+            intent.putExtra("recipe", recipe);
+            holder.itemView.getContext().startActivity(intent);
+        });
     }
 
     @Override
@@ -48,11 +56,13 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
     public static class RecipeViewHolder extends RecyclerView.ViewHolder {
         TextView title;
         ImageView image;
+        Button viewDetailsButton;
 
         public RecipeViewHolder(@NonNull View itemView) {
             super(itemView);
             title = itemView.findViewById(R.id.recipeTitle);
             image = itemView.findViewById(R.id.recipeImage);
+            viewDetailsButton = itemView.findViewById(R.id.viewDetailsButton);
         }
     }
 }
