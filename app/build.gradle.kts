@@ -41,6 +41,7 @@ android {
 dependencies {
     implementation(libs.cloudinary.android)
     implementation(libs.okhttp)
+    implementation(libs.generativeai)
     implementation(libs.picasso)
     implementation(libs.android.mail)
     implementation(libs.firebase.firestore.v24100)

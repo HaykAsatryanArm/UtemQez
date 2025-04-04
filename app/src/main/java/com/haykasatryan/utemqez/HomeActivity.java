@@ -11,18 +11,19 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
+import com.google.ai.client.generativeai.java.ChatFutures;
+import com.google.ai.client.generativeai.java.GenerativeModelFutures;
+
 import android.annotation.SuppressLint;
 import android.util.Log;
-
-import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,7 @@ public class HomeActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private Button btnLogin, btnRegister;
     private TextView welcomeText;
+    private ChatFutures chatModel; // Will be initialized in onCreate
     private static final String TAG = "HomeActivity";
 
     private RecyclerView recipeRecyclerView, allRecipesRecyclerView;
@@ -40,7 +42,7 @@ public class HomeActivity extends AppCompatActivity {
     private final List<Recipe> allRecipesList = new ArrayList<>();
 
     private Button buttonBreakfast, buttonSalads, buttonDinner, buttonSnacks;
-    private Button activeButton; // Track the currently selected button
+    private Button activeButton;
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -54,6 +56,27 @@ public class HomeActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        // Initialize GeminiPro and chatModel
+        GeminiPro geminiPro = new GeminiPro();
+        GenerativeModelFutures model = geminiPro.getModel();
+        chatModel = model.startChat(); // Initialize chatModel here
+
+        // Use the initialized chatModel to get a response
+        String query = "Give me point-by-point and very very detailed numbered instructions on how to make the recipe \"Healthy Southwestern Oatmeal\" based ONLY on the given ingredients: ½ tsps chili powder, 2 egg whites, 40.54 g old fashioned oats, 4 Tbsps reduced fat cheddar cheese, some salt, 2 green white scallions. The recipe should align with the nutritional profile of approximately 440 Calories, 26g Protein protein, 23g Total Fat fat, and 31g Carbs carbs. Make each step no more than 1 sentence or 1 move.";
+        GeminiPro.getResponse(chatModel, query, new ResponseCallback() {
+            @Override
+            public void onResponse(String response) {
+                Log.d("AI Response", response);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                Log.d("AI Error", "Error getting response from AI: " + throwable.getMessage());
+            }
+        });
+
+        // WRITE CODE HERE (placeholder for additional code if needed)
 
         mAuth = FirebaseAuth.getInstance();
         btnLogin = findViewById(R.id.btnLogin);
@@ -112,12 +135,10 @@ public class HomeActivity extends AppCompatActivity {
 
     private void handleCategorySelection(String category, Button selectedButton) {
         if (activeButton != selectedButton) {
-            // Deselect the previous button
             if (activeButton != null) {
                 activeButton.setSelected(false);
                 activeButton.setTextColor(getResources().getColor(R.color.blackot));
             }
-            // Select the new button
             selectedButton.setSelected(true);
             selectedButton.setTextColor(getResources().getColor(R.color.white));
             activeButton = selectedButton;
@@ -125,7 +146,6 @@ public class HomeActivity extends AppCompatActivity {
         }
     }
 
-    // In HomeActivity.java
     private void fetchRecipesByCategory(String selectedCategory) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         db.collection("recipes")
