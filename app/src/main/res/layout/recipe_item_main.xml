@@ -56,7 +56,7 @@
                 android:paddingEnd="16dp"
                 app:cornerRadius="12dp"
                 android:textColor="@color/white"
-                android:backgroundTint="@color/dark"
+                android:background="@drawable/button_background"
                 android:layout_gravity="bottom"
                 android:layout_marginTop="4dp"
                 tools:ignore="HardcodedText" />
