@@ -40,6 +40,7 @@ public class HomeActivity extends AppCompatActivity {
     private final List<Recipe> allRecipesList = new ArrayList<>();
 
     private Button buttonBreakfast, buttonSalads, buttonDinner, buttonSnacks;
+    private Button activeButton; // Track the currently selected button
 
     @SuppressLint("SetTextI18n")
     @Override
@@ -53,10 +54,6 @@ public class HomeActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-
-        // Upload JSON file (Optional, remove if not needed)
-//        FirestoreUploader firestoreUploader = new FirestoreUploader();
-//        firestoreUploader.uploadJSONToFirestore(this, "recipes.json");
 
         mAuth = FirebaseAuth.getInstance();
         btnLogin = findViewById(R.id.btnLogin);
@@ -93,6 +90,14 @@ public class HomeActivity extends AppCompatActivity {
         buttonDinner = findViewById(R.id.buttonDinner);
         buttonSnacks = findViewById(R.id.buttonSnacks);
 
+        // Set initial active button
+        activeButton = buttonBreakfast;
+        buttonBreakfast.setSelected(true);
+        buttonBreakfast.setTextColor(getResources().getColor(R.color.white));
+        buttonSalads.setTextColor(getResources().getColor(R.color.blackot));
+        buttonDinner.setTextColor(getResources().getColor(R.color.blackot));
+        buttonSnacks.setTextColor(getResources().getColor(R.color.blackot));
+
         setCategoryButtonListeners();
         fetchRecipesByCategory("Breakfast");
         fetchAllRecipes();
@@ -106,18 +111,18 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void handleCategorySelection(String category, Button selectedButton) {
-        fetchRecipesByCategory(category);
-        updateButtonColors(selectedButton);
-    }
-
-    private void updateButtonColors(Button activeButton) {
-        Button[] buttons = {buttonBreakfast, buttonSalads, buttonDinner, buttonSnacks};
-        for (Button button : buttons) {
-            button.setBackgroundColor(ContextCompat.getColor(this, R.color.grey));
-            button.setTextColor(ContextCompat.getColor(this, R.color.blackot));
+        if (activeButton != selectedButton) {
+            // Deselect the previous button
+            if (activeButton != null) {
+                activeButton.setSelected(false);
+                activeButton.setTextColor(getResources().getColor(R.color.blackot));
+            }
+            // Select the new button
+            selectedButton.setSelected(true);
+            selectedButton.setTextColor(getResources().getColor(R.color.white));
+            activeButton = selectedButton;
+            fetchRecipesByCategory(category);
         }
-        activeButton.setBackgroundColor(ContextCompat.getColor(this, R.color.main));
-        activeButton.setTextColor(ContextCompat.getColor(this, R.color.white));
     }
 
     @SuppressLint("NotifyDataSetChanged")

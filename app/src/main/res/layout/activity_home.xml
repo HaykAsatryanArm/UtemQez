@@ -106,51 +106,51 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="6dp"
-                    android:backgroundTint="@color/main"
-                    android:elevation="8dp"
+                    android:background="@drawable/button_category_background"
                     android:paddingHorizontal="24dp"
                     android:paddingVertical="9dp"
                     android:text="Breakfast"
-                    android:textSize="16sp" />
+                    android:textSize="16sp"
+                    android:textAllCaps="false" />
 
                 <Button
                     android:id="@+id/buttonSalads"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="6dp"
-                    android:backgroundTint="@color/grey"
-                    android:elevation="8dp"
+                    android:background="@drawable/button_category_background"
                     android:paddingHorizontal="24dp"
                     android:paddingVertical="9dp"
                     android:text="Salads"
+                    android:textSize="16sp"
                     android:textColor="@color/blackot"
-                    android:textSize="16sp" />
+                    android:textAllCaps="false" />
 
                 <Button
                     android:id="@+id/buttonDinner"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="6dp"
-                    android:backgroundTint="@color/grey"
-                    android:elevation="8dp"
+                    android:background="@drawable/button_category_background"
                     android:paddingHorizontal="24dp"
                     android:paddingVertical="9dp"
                     android:text="Dinner"
+                    android:textSize="16sp"
                     android:textColor="@color/blackot"
-                    android:textSize="16sp" />
+                    android:textAllCaps="false" />
 
                 <Button
                     android:id="@+id/buttonSnacks"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="6dp"
-                    android:backgroundTint="@color/grey"
-                    android:elevation="8dp"
+                    android:background="@drawable/button_category_background"
                     android:paddingHorizontal="24dp"
                     android:paddingVertical="9dp"
                     android:text="Snacks"
+                    android:textSize="16sp"
                     android:textColor="@color/blackot"
-                    android:textSize="16sp" />
+                    android:textAllCaps="false" />
             </LinearLayout>
         </HorizontalScrollView>
 
@@ -165,7 +165,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             tools:listitem="@layout/recipe_item_main" />
-
 
         <TextView
             android:id="@+id/popularTitle"
@@ -183,8 +182,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-
-        <!-- All Recipes RecyclerView (Scrolls with the Page) -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/allRecipesRecyclerView"
             android:layout_width="match_parent"
