@@ -87,6 +87,8 @@ public class RecipeDetailActivity extends AppCompatActivity {
             if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
                 Picasso.get()
                         .load(recipe.getImageUrl())
+                        .resize(1000, 1000) // Target size in pixels
+                        .onlyScaleDown() // Only scale down, not up
                         .into(recipeImage);
             }
         } else {

@@ -75,9 +75,12 @@ public class Recipe implements Parcelable {
     public Nutrition getNutrition() { return nutrition; }
     public String getImageUrl() { return imageUrl; }
     public List<String> getCategory() { return category; }
+
+    // Setter for instructions (added to resolve private access issue)
+    public void setInstructions(String instructions) { this.instructions = instructions; }
 }
 
-// Ingredient class
+// Ingredient class (unchanged)
 class Ingredient implements Parcelable {
     private String amount;
     private String name;
@@ -116,7 +119,7 @@ class Ingredient implements Parcelable {
     public String getName() { return name; }
 }
 
-// Nutrition class
+// Nutrition class (unchanged)
 class Nutrition implements Parcelable {
     private String calories;
     private String protein;
