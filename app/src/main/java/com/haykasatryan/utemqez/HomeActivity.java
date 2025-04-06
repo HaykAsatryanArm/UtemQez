@@ -33,7 +33,7 @@ public class HomeActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private Button btnLogin, btnRegister;
     private TextView welcomeText;
-    private ChatFutures chatModel; // Will be initialized in onCreate
+    private ChatFutures chatModel;
     private static final String TAG = "HomeActivity";
 
     private RecyclerView recipeRecyclerView, allRecipesRecyclerView;
@@ -60,23 +60,7 @@ public class HomeActivity extends AppCompatActivity {
         // Initialize GeminiPro and chatModel
         GeminiPro geminiPro = new GeminiPro();
         GenerativeModelFutures model = geminiPro.getModel();
-        chatModel = model.startChat(); // Initialize chatModel here
-
-        // Use the initialized chatModel to get a response
-//        String query = "Generate a very detailed, point-by-point numbered list of cooking instructions (e.g., \"1. ...\", \"2. ...\") for preparing the recipe \"[recipe.getTitle()]\" using ONLY these ingredients: [buildRecipeIngredients(recipe)]. Each step must be a single sentence or action, aiming to match a nutritional profile of approximately [nutrition.getCalories()], [nutrition.getProtein()] protein, [nutrition.getFat()] fat, and [nutrition.getCarbs()] carbs. Return ONLY the numbered list in plain text, with no code, explanations, warnings, or additional commentary, even if assumptions are needed or the nutritional profile cannot be perfectly matched.";
-//        GeminiPro.getResponse(chatModel, query, new ResponseCallback() {
-//            @Override
-//            public void onResponse(String response) {
-//                Log.d("AI Response", response);
-//            }
-//
-//            @Override
-//            public void onError(Throwable throwable) {
-//                Log.d("AI Error", "Error getting response from AI: " + throwable.getMessage());
-//            }
-//        });
-
-        // WRITE CODE HERE (placeholder for additional code if needed)
+        chatModel = model.startChat();
 
         mAuth = FirebaseAuth.getInstance();
         btnLogin = findViewById(R.id.btnLogin);
@@ -153,12 +137,20 @@ public class HomeActivity extends AppCompatActivity {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         categoryRecipeList.clear();
+                        Log.d(TAG, "Fetching recipes for category: " + selectedCategory);
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             Recipe recipe = document.toObject(Recipe.class);
+                            // Log recipe details
+                            Log.d(TAG, "Recipe ID: " + recipe.getId() +
+                                    ", Title: " + recipe.getTitle() +
+                                    ", Categories: " + (recipe.getCategory() != null ? recipe.getCategory().toString() : "null") +
+                                    ", Instructions: " + recipe.getInstructions() +
+                                    ", ImageUrl: " + recipe.getImageUrl());
                             if (recipe.getCategory() != null && recipe.getCategory().contains(selectedCategory)) {
                                 categoryRecipeList.add(recipe);
                             }
                         }
+                        Log.d(TAG, "Recipes in category '" + selectedCategory + "': " + categoryRecipeList.size());
                         runOnUiThread(() -> {
                             if (categoryRecipeAdapter == null) {
                                 categoryRecipeAdapter = new RecipeAdapter(categoryRecipeList, R.layout.recipe_item_main);
@@ -180,10 +172,18 @@ public class HomeActivity extends AppCompatActivity {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         allRecipesList.clear();
+                        Log.d(TAG, "Fetching all recipes");
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             Recipe recipe = document.toObject(Recipe.class);
+                            // Log recipe details
+                            Log.d(TAG, "Recipe ID: " + recipe.getId() +
+                                    ", Title: " + recipe.getTitle() +
+                                    ", Categories: " + (recipe.getCategory() != null ? recipe.getCategory().toString() : "null") +
+                                    ", Instructions: " + recipe.getInstructions() +
+                                    ", ImageUrl: " + recipe.getImageUrl());
                             allRecipesList.add(recipe);
                         }
+                        Log.d(TAG, "Total recipes fetched: " + allRecipesList.size());
                         runOnUiThread(() -> {
                             if (allRecipesAdapter == null) {
                                 allRecipesAdapter = new RecipeAdapter(allRecipesList, R.layout.recipe_item_search);
