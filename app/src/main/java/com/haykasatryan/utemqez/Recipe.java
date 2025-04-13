@@ -16,10 +16,9 @@ public class Recipe implements Parcelable {
     private Nutrition nutrition;
     private String imageUrl;
     private List<String> category;
+    private String userId; // Added for Firestore
 
-    public Recipe() {
-        // Empty constructor required for Firestore deserialization
-    }
+    public Recipe() {}
 
     protected Recipe(Parcel in) {
         id = in.readInt();
@@ -33,6 +32,7 @@ public class Recipe implements Parcelable {
         imageUrl = in.readString();
         category = new ArrayList<>();
         in.readStringList(category);
+        userId = in.readString();
     }
 
     public static final Creator<Recipe> CREATOR = new Creator<Recipe>() {
@@ -63,6 +63,7 @@ public class Recipe implements Parcelable {
         dest.writeParcelable(nutrition, flags);
         dest.writeString(imageUrl);
         dest.writeStringList(category);
+        dest.writeString(userId);
     }
 
     // Getters
@@ -75,12 +76,21 @@ public class Recipe implements Parcelable {
     public Nutrition getNutrition() { return nutrition; }
     public String getImageUrl() { return imageUrl; }
     public List<String> getCategory() { return category; }
+    public String getUserId() { return userId; }
 
-    // Setter for instructions (added to resolve private access issue)
+    // Setters
+    public void setId(int id) { this.id = id; }
+    public void setTitle(String title) { this.title = title; }
+    public void setReadyInMinutes(int readyInMinutes) { this.readyInMinutes = readyInMinutes; }
+    public void setSourceUrl(String sourceUrl) { this.sourceUrl = sourceUrl; }
+    public void setIngredients(List<Ingredient> ingredients) { this.ingredients = ingredients; }
     public void setInstructions(String instructions) { this.instructions = instructions; }
+    public void setNutrition(Nutrition nutrition) { this.nutrition = nutrition; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public void setCategory(List<String> category) { this.category = category; }
+    public void setUserId(String userId) { this.userId = userId; }
 }
 
-// Ingredient class (unchanged)
 class Ingredient implements Parcelable {
     private String amount;
     private String name;
@@ -117,9 +127,11 @@ class Ingredient implements Parcelable {
 
     public String getAmount() { return amount; }
     public String getName() { return name; }
+
+    public void setAmount(String amount) { this.amount = amount; }
+    public void setName(String name) { this.name = name; }
 }
 
-// Nutrition class (unchanged)
 class Nutrition implements Parcelable {
     private String calories;
     private String protein;
@@ -164,4 +176,9 @@ class Nutrition implements Parcelable {
     public String getProtein() { return protein; }
     public String getFat() { return fat; }
     public String getCarbs() { return carbs; }
+
+    public void setCalories(String calories) { this.calories = calories; }
+    public void setProtein(String protein) { this.protein = protein; }
+    public void setFat(String fat) { this.fat = fat; }
+    public void setCarbs(String carbs) { this.carbs = carbs; }
 }

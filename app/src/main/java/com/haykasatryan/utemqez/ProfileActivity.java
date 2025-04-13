@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -19,12 +20,16 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+
 import com.squareup.picasso.Picasso;
 
 import java.io.File;
@@ -54,6 +59,12 @@ public class ProfileActivity extends AppCompatActivity {
     private EditText nutritionCalories, nutritionProtein, nutritionFat, nutritionCarbs;
     private String recipeImageUrl = "";
 
+    // RecyclerView for user's recipes
+    private RecyclerView userRecipesRecyclerView;
+    private RecipeAdapter userRecipesAdapter;
+    private final List<Recipe> userRecipesList = new ArrayList<>();
+    private static final String TAG = "ProfileActivity";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,6 +77,7 @@ public class ProfileActivity extends AppCompatActivity {
         profileImage = findViewById(R.id.profilePicture);
         btnLogout = findViewById(R.id.btnLogout);
         btnAddNewRecipe = findViewById(R.id.btnAddNewRecipe);
+        userRecipesRecyclerView = findViewById(R.id.userRecipesRecyclerView);
 
         cloudinary = new Cloudinary(ObjectUtils.asMap(
                 "cloud_name", "deor2c9as",
@@ -73,11 +85,17 @@ public class ProfileActivity extends AppCompatActivity {
                 "api_secret", "tPtmtB9HaZ7pTv6dn7lEJJssOh0"
         ));
 
+        // Initialize RecyclerView
+        userRecipesRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        userRecipesAdapter = new RecipeAdapter(userRecipesList, R.layout.recipe_item_search);
+        userRecipesRecyclerView.setAdapter(userRecipesAdapter);
+
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
-            userName.setText(user.getDisplayName());
+            userName.setText(user.getDisplayName() != null ? user.getDisplayName() : "User");
             userEmail.setText(user.getEmail());
             loadProfilePicture(user.getEmail());
+            fetchUserRecipes(user.getUid());
         }
 
         profileImage.setOnClickListener(v -> pickImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
@@ -89,13 +107,87 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
+    private void fetchUserRecipes(String userId) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("recipes")
+                .whereEqualTo("userId", userId)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        userRecipesList.clear();
+                        Log.d(TAG, "Fetching recipes for userId: " + userId);
+                        for (QueryDocumentSnapshot document : task.getResult()) {
+                            try {
+                                Recipe recipe = new Recipe();
+                                recipe.setId(document.getLong("id").intValue());
+                                recipe.setTitle(document.getString("title"));
+                                recipe.setReadyInMinutes(document.getLong("readyInMinutes").intValue());
+                                recipe.setSourceUrl(document.getString("sourceUrl"));
+                                recipe.setInstructions(document.getString("instructions"));
+                                recipe.setImageUrl(document.getString("imageUrl"));
+                                recipe.setCategory((List<String>) document.get("category"));
+                                recipe.setUserId(document.getString("userId"));
+
+                                // Convert ingredients from List<Map<String, String>> to List<Ingredient>
+                                List<Map<String, String>> rawIngredients = (List<Map<String, String>>) document.get("ingredients");
+                                List<Ingredient> ingredients = new ArrayList<>();
+                                if (rawIngredients != null) {
+                                    for (Map<String, String> raw : rawIngredients) {
+                                        Ingredient ingredient = new Ingredient();
+                                        ingredient.setAmount(raw.get("amount"));
+                                        ingredient.setName(raw.get("name"));
+                                        ingredients.add(ingredient);
+                                    }
+                                }
+                                recipe.setIngredients(ingredients);
+
+                                // Convert nutrition from Map<String, String> to Nutrition
+                                Map<String, String> rawNutrition = (Map<String, String>) document.get("nutrition");
+                                Nutrition nutrition = new Nutrition();
+                                if (rawNutrition != null) {
+                                    nutrition.setCalories(rawNutrition.get("calories"));
+                                    nutrition.setProtein(rawNutrition.get("protein"));
+                                    nutrition.setFat(rawNutrition.get("fat"));
+                                    nutrition.setCarbs(rawNutrition.get("carbs"));
+                                }
+                                recipe.setNutrition(nutrition);
+
+                                Log.d(TAG, "Recipe ID: " + recipe.getId() +
+                                        ", Title: " + recipe.getTitle() +
+                                        ", Categories: " + (recipe.getCategory() != null ? recipe.getCategory().toString() : "null") +
+                                        ", Instructions: " + recipe.getInstructions() +
+                                        ", ImageUrl: " + recipe.getImageUrl() +
+                                        ", UserId: " + recipe.getUserId());
+                                userRecipesList.add(recipe);
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error deserializing recipe: " + document.getId(), e);
+                            }
+                        }
+                        Log.d(TAG, "Total user recipes fetched: " + userRecipesList.size());
+                        runOnUiThread(() -> {
+                            userRecipesAdapter.notifyDataSetChanged();
+                            TextView noRecipesText = findViewById(R.id.noRecipesText);
+                            noRecipesText.setVisibility(userRecipesList.isEmpty() ? View.VISIBLE : View.GONE);
+                            userRecipesRecyclerView.setVisibility(userRecipesList.isEmpty() ? View.GONE : View.VISIBLE);
+                        });
+                    } else {
+                        Log.e(TAG, "Error fetching user recipes", task.getException());
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, "Failed to load recipes: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
+                            TextView noRecipesText = findViewById(R.id.noRecipesText);
+                            noRecipesText.setVisibility(View.VISIBLE);
+                            userRecipesRecyclerView.setVisibility(View.GONE);
+                        });
+                    }
+                });
+    }
+
     private void showRecipeFormDialog() {
         recipeDialog = new Dialog(this);
         recipeDialog.setContentView(R.layout.layout_recipe_form_popup);
         recipeDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         recipeDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 
-        // Initialize dialog views
         recipeTitle = recipeDialog.findViewById(R.id.recipeTitle);
         recipeTime = recipeDialog.findViewById(R.id.recipeTime);
         btnSelectImage = recipeDialog.findViewById(R.id.btnSelectImage);
@@ -112,27 +204,42 @@ public class ProfileActivity extends AppCompatActivity {
         btnAddCategory = recipeDialog.findViewById(R.id.btnAddCategory);
         btnPostRecipe = recipeDialog.findViewById(R.id.btnPostRecipe);
 
-        // Initialize close button
-        TextView btnClosePopup = recipeDialog.findViewById(R.id.btnClosePopup);
+        ImageButton btnClosePopup = recipeDialog.findViewById(R.id.btnClosePopup);
         btnClosePopup.setOnClickListener(v -> recipeDialog.dismiss());
 
-        // Set up dialog button listeners
         btnSelectImage.setOnClickListener(v -> pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
         btnAddIngredient.setOnClickListener(v -> addIngredientField());
         btnAddInstruction.setOnClickListener(v -> addInstructionField());
         btnAddCategory.setOnClickListener(v -> addCategoryField());
         btnPostRecipe.setOnClickListener(v -> {
-            postRecipe();
-            recipeDialog.dismiss();
+            if (validateRecipeForm()) {
+                postRecipe();
+                recipeDialog.dismiss();
+            }
         });
 
-        // Initialize form with one field each
         addIngredientField();
         addInstructionField();
         addCategoryField();
 
-        recipeDialog.setCanceledOnTouchOutside(true); // Dismiss when clicking outside
+        recipeDialog.setCanceledOnTouchOutside(true);
         recipeDialog.show();
+    }
+
+    private boolean validateRecipeForm() {
+        if (recipeTitle.getText().toString().trim().isEmpty()) {
+            Toast.makeText(this, "Please enter a recipe title", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        if (!recipeTime.getText().toString().trim().isEmpty()) {
+            try {
+                Integer.parseInt(recipeTime.getText().toString().trim());
+            } catch (NumberFormatException e) {
+                Toast.makeText(this, "Time must be a number", Toast.LENGTH_SHORT).show();
+                return false;
+            }
+        }
+        return true;
     }
 
     private void addIngredientField() {
@@ -194,25 +301,14 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
 
-        String instructions;
-        if (instructionList.isEmpty()) {
-            instructions = "No instructions found";
-        } else {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < instructionList.size(); i++) {
-                sb.append(i + 1).append(". ").append(instructionList.get(i));
-                if (i < instructionList.size() - 1) {
-                    sb.append(" ");
-                }
-            }
-            instructions = sb.toString();
-        }
+        String instructions = instructionList.isEmpty() ? "No instructions found" :
+                String.join(" ", instructionList.stream().map(s -> (instructionList.indexOf(s) + 1) + ". " + s).toList());
 
         Map<String, String> nutrition = new HashMap<>();
-        nutrition.put("calories", nutritionCalories.getText().toString() + " Calories");
-        nutrition.put("protein", nutritionProtein.getText().toString() + "g Protein");
-        nutrition.put("fat", nutritionFat.getText().toString() + "g Total Fat");
-        nutrition.put("carbs", nutritionCarbs.getText().toString() + "g Carbs");
+        nutrition.put("calories", nutritionCalories.getText().toString().isEmpty() ? "0 Calories" : nutritionCalories.getText().toString() + " Calories");
+        nutrition.put("protein", nutritionProtein.getText().toString().isEmpty() ? "0g Protein" : nutritionProtein.getText().toString() + "g Protein");
+        nutrition.put("fat", nutritionFat.getText().toString().isEmpty() ? "0g Fat" : nutritionFat.getText().toString() + "g Fat");
+        nutrition.put("carbs", nutritionCarbs.getText().toString().isEmpty() ? "0g Carbs" : nutritionCarbs.getText().toString() + "g Carbs");
 
         List<String> categories = new ArrayList<>();
         for (int i = 0; i < categoriesContainer.getChildCount(); i++) {
@@ -225,7 +321,8 @@ public class ProfileActivity extends AppCompatActivity {
         Map<String, Object> recipe = new HashMap<>();
         recipe.put("id", recipeId);
         recipe.put("title", recipeTitle.getText().toString());
-        recipe.put("readyInMinutes", Integer.parseInt(recipeTime.getText().toString()));
+        recipe.put("readyInMinutes", recipeTime.getText().toString().isEmpty() ? 0 : Integer.parseInt(recipeTime.getText().toString()));
+        recipe.put("sourceUrl", "");
         recipe.put("ingredients", ingredients);
         recipe.put("instructions", instructions);
         recipe.put("nutrition", nutrition);
@@ -240,10 +337,11 @@ public class ProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Recipe posted successfully", Toast.LENGTH_SHORT).show();
                     clearForm();
+                    fetchUserRecipes(user.getUid());
                 })
                 .addOnFailureListener(e -> {
-                    Log.e("ProfileActivity", "Failed to post recipe", e);
-                    Toast.makeText(this, "Failed to post recipe", Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Failed to post recipe", e);
+                    Toast.makeText(this, "Failed to post recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -275,7 +373,7 @@ public class ProfileActivity extends AppCompatActivity {
                         profileImage.setImageBitmap(bitmap);
                         uploadImageToCloudinary(bitmap, true);
                     } catch (FileNotFoundException e) {
-                        e.printStackTrace();
+                        Log.e(TAG, "Error loading profile image", e);
                     }
                 }
             }
@@ -291,7 +389,7 @@ public class ProfileActivity extends AppCompatActivity {
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                         uploadImageToCloudinary(bitmap, false);
                     } catch (FileNotFoundException e) {
-                        e.printStackTrace();
+                        Log.e(TAG, "Error loading recipe image", e);
                     }
                 }
             }
@@ -310,6 +408,7 @@ public class ProfileActivity extends AppCompatActivity {
                     runOnUiThread(() -> imageUrlText.setText(recipeImageUrl));
                 }
             } catch (Exception e) {
+                Log.e(TAG, "Image upload failed", e);
                 runOnUiThread(() -> Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show());
             }
         }).start();
@@ -321,7 +420,7 @@ public class ProfileActivity extends AppCompatActivity {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
             out.flush();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error converting bitmap to file", e);
         }
         return file;
     }
@@ -358,6 +457,9 @@ public class ProfileActivity extends AppCompatActivity {
                         profileImage.setImageResource(R.drawable.user);
                     }
                 })
-                .addOnFailureListener(e -> profileImage.setImageResource(R.drawable.user));
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error loading profile picture", e);
+                    profileImage.setImageResource(R.drawable.user);
+                });
     }
 }
