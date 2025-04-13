@@ -38,7 +38,11 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeView
 
         // Load image using Picasso
         if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
-            Picasso.get().load(recipe.getImageUrl()).into(holder.image);
+            Picasso.get()
+                    .load(recipe.getImageUrl().replace("http://", "https://"))
+                    .placeholder(R.drawable.user)
+                    .error(R.drawable.user)
+                    .into(holder.image);
         }
 
         holder.viewDetailsButton.setOnClickListener(v -> {

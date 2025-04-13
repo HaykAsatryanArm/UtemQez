@@ -1,5 +1,6 @@
 package com.haykasatryan.utemqez;
 
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -41,12 +42,16 @@ public class ProfileActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private TextView userName, userEmail;
     private ImageView profileImage;
-    private Button btnLogout, btnSelectImage, btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe;
+    private Button btnLogout, btnAddNewRecipe;
+    private Cloudinary cloudinary;
+
+    // Dialog-related fields
+    private Dialog recipeDialog;
+    private Button btnSelectImage, btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe;
     private EditText recipeTitle, recipeTime;
     private TextView imageUrlText;
     private LinearLayout ingredientsContainer, instructionsContainer, categoriesContainer;
     private EditText nutritionCalories, nutritionProtein, nutritionFat, nutritionCarbs;
-    private Cloudinary cloudinary;
     private String recipeImageUrl = "";
 
     @Override
@@ -60,21 +65,7 @@ public class ProfileActivity extends AppCompatActivity {
         userEmail = findViewById(R.id.profileEmail);
         profileImage = findViewById(R.id.profilePicture);
         btnLogout = findViewById(R.id.btnLogout);
-        recipeTitle = findViewById(R.id.recipeTitle);
-        recipeTime = findViewById(R.id.recipeTime);
-        btnSelectImage = findViewById(R.id.btnSelectImage);
-        imageUrlText = findViewById(R.id.imageUrlText);
-        ingredientsContainer = findViewById(R.id.ingredientsContainer);
-        btnAddIngredient = findViewById(R.id.btnAddIngredient);
-        instructionsContainer = findViewById(R.id.instructionsContainer);
-        btnAddInstruction = findViewById(R.id.btnAddInstruction);
-        nutritionCalories = findViewById(R.id.nutritionCalories);
-        nutritionProtein = findViewById(R.id.nutritionProtein);
-        nutritionFat = findViewById(R.id.nutritionFat);
-        nutritionCarbs = findViewById(R.id.nutritionCarbs);
-        categoriesContainer = findViewById(R.id.categoriesContainer);
-        btnAddCategory = findViewById(R.id.btnAddCategory);
-        btnPostRecipe = findViewById(R.id.btnPostRecipe);
+        btnAddNewRecipe = findViewById(R.id.btnAddNewRecipe);
 
         cloudinary = new Cloudinary(ObjectUtils.asMap(
                 "cloud_name", "deor2c9as",
@@ -90,20 +81,58 @@ public class ProfileActivity extends AppCompatActivity {
         }
 
         profileImage.setOnClickListener(v -> pickImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
-        btnSelectImage.setOnClickListener(v -> pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
-        btnAddIngredient.setOnClickListener(v -> addIngredientField());
-        btnAddInstruction.setOnClickListener(v -> addInstructionField());
-        btnAddCategory.setOnClickListener(v -> addCategoryField());
-        btnPostRecipe.setOnClickListener(v -> postRecipe());
+        btnAddNewRecipe.setOnClickListener(v -> showRecipeFormDialog());
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut();
             startActivity(new Intent(ProfileActivity.this, LoginActivity.class));
             finish();
         });
+    }
 
+    private void showRecipeFormDialog() {
+        recipeDialog = new Dialog(this);
+        recipeDialog.setContentView(R.layout.layout_recipe_form_popup);
+        recipeDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        recipeDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+        // Initialize dialog views
+        recipeTitle = recipeDialog.findViewById(R.id.recipeTitle);
+        recipeTime = recipeDialog.findViewById(R.id.recipeTime);
+        btnSelectImage = recipeDialog.findViewById(R.id.btnSelectImage);
+        imageUrlText = recipeDialog.findViewById(R.id.imageUrlText);
+        ingredientsContainer = recipeDialog.findViewById(R.id.ingredientsContainer);
+        btnAddIngredient = recipeDialog.findViewById(R.id.btnAddIngredient);
+        instructionsContainer = recipeDialog.findViewById(R.id.instructionsContainer);
+        btnAddInstruction = recipeDialog.findViewById(R.id.btnAddInstruction);
+        nutritionCalories = recipeDialog.findViewById(R.id.nutritionCalories);
+        nutritionProtein = recipeDialog.findViewById(R.id.nutritionProtein);
+        nutritionFat = recipeDialog.findViewById(R.id.nutritionFat);
+        nutritionCarbs = recipeDialog.findViewById(R.id.nutritionCarbs);
+        categoriesContainer = recipeDialog.findViewById(R.id.categoriesContainer);
+        btnAddCategory = recipeDialog.findViewById(R.id.btnAddCategory);
+        btnPostRecipe = recipeDialog.findViewById(R.id.btnPostRecipe);
+
+        // Initialize close button
+        TextView btnClosePopup = recipeDialog.findViewById(R.id.btnClosePopup);
+        btnClosePopup.setOnClickListener(v -> recipeDialog.dismiss());
+
+        // Set up dialog button listeners
+        btnSelectImage.setOnClickListener(v -> pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
+        btnAddIngredient.setOnClickListener(v -> addIngredientField());
+        btnAddInstruction.setOnClickListener(v -> addInstructionField());
+        btnAddCategory.setOnClickListener(v -> addCategoryField());
+        btnPostRecipe.setOnClickListener(v -> {
+            postRecipe();
+            recipeDialog.dismiss();
+        });
+
+        // Initialize form with one field each
         addIngredientField();
         addInstructionField();
         addCategoryField();
+
+        recipeDialog.setCanceledOnTouchOutside(true); // Dismiss when clicking outside
+        recipeDialog.show();
     }
 
     private void addIngredientField() {
@@ -156,7 +185,6 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
 
-        // Collect instructions as a list first
         List<String> instructionList = new ArrayList<>();
         for (int i = 0; i < instructionsContainer.getChildCount(); i++) {
             EditText instruction = (EditText) instructionsContainer.getChildAt(i);
@@ -166,7 +194,6 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
 
-        // Combine instructions into a single numbered string
         String instructions;
         if (instructionList.isEmpty()) {
             instructions = "No instructions found";
@@ -200,7 +227,7 @@ public class ProfileActivity extends AppCompatActivity {
         recipe.put("title", recipeTitle.getText().toString());
         recipe.put("readyInMinutes", Integer.parseInt(recipeTime.getText().toString()));
         recipe.put("ingredients", ingredients);
-        recipe.put("instructions", instructions); // Now a single String
+        recipe.put("instructions", instructions);
         recipe.put("nutrition", nutrition);
         recipe.put("imageUrl", recipeImageUrl);
         recipe.put("category", categories);
