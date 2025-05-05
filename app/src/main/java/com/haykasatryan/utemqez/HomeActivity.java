@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -19,22 +20,13 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
-import com.google.ai.client.generativeai.java.ChatFutures;
-import com.google.ai.client.generativeai.java.GenerativeModelFutures;
-
-import android.annotation.SuppressLint;
-import android.util.Log;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class HomeActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
-    private Button btnLogin, btnRegister;
     private TextView welcomeText;
-    private ChatFutures chatModel;
-    private static final String TAG = "HomeActivity";
 
     private RecyclerView recipeRecyclerView, allRecipesRecyclerView;
     private RecipeAdapter categoryRecipeAdapter, allRecipesAdapter;
@@ -44,7 +36,6 @@ public class HomeActivity extends AppCompatActivity {
     private Button buttonBreakfast, buttonSalads, buttonDinner, buttonSnacks;
     private Button activeButton;
 
-    @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,31 +48,31 @@ public class HomeActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Initialize GeminiPro and chatModel
-        GeminiPro geminiPro = new GeminiPro();
-        GenerativeModelFutures model = geminiPro.getModel();
-        chatModel = model.startChat();
-
+        // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
-        btnLogin = findViewById(R.id.btnLogin);
-        btnRegister = findViewById(R.id.btnRegister);
-        welcomeText = findViewById(R.id.header_title);
 
+        // Find views
+        welcomeText = findViewById(R.id.header_title);
+        ImageButton profileButton = findViewById(R.id.nav_profile);
+
+        // Set up authentication-based UI
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             String userName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
             welcomeText.setText("Welcome, " + userName + "!");
-            btnLogin.setVisibility(View.GONE);
-            btnRegister.setVisibility(View.GONE);
+            welcomeText.setVisibility(View.VISIBLE);
         } else {
             welcomeText.setVisibility(View.GONE);
-            btnLogin.setVisibility(View.VISIBLE);
-            btnRegister.setVisibility(View.VISIBLE);
         }
 
-        btnLogin.setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, LoginActivity.class)));
-        btnRegister.setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, RegisterActivity.class)));
-        welcomeText.setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, ProfileActivity.class)));
+        // Profile button click listener
+        profileButton.setOnClickListener(v -> {
+            if (mAuth.getCurrentUser() == null) {
+                startActivity(new Intent(HomeActivity.this, LoginActivity.class));
+            } else {
+                startActivity(new Intent(HomeActivity.this, ProfileActivity.class));
+            }
+        });
 
         // Initialize category RecyclerView
         recipeRecyclerView = findViewById(R.id.recipeRecyclerView);
@@ -108,6 +99,20 @@ public class HomeActivity extends AppCompatActivity {
         setCategoryButtonListeners();
         fetchRecipesByCategory("Breakfast");
         fetchAllRecipes();
+
+        // Bottom navigation click listeners
+        findViewById(R.id.nav_home).setOnClickListener(v -> {
+            // Handle Home click
+        });
+        findViewById(R.id.nav_search).setOnClickListener(v -> {
+            // Handle Search click
+        });
+        findViewById(R.id.nav_ai).setOnClickListener(v -> {
+            // Handle AI click
+        });
+        findViewById(R.id.nav_liked).setOnClickListener(v -> {
+            // Handle Liked click
+        });
     }
 
     private void setCategoryButtonListeners() {
@@ -137,20 +142,12 @@ public class HomeActivity extends AppCompatActivity {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         categoryRecipeList.clear();
-                        Log.d(TAG, "Fetching recipes for category: " + selectedCategory);
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             Recipe recipe = document.toObject(Recipe.class);
-                            // Log recipe details
-                            Log.d(TAG, "Recipe ID: " + recipe.getId() +
-                                    ", Title: " + recipe.getTitle() +
-                                    ", Categories: " + (recipe.getCategory() != null ? recipe.getCategory().toString() : "null") +
-                                    ", Instructions: " + recipe.getInstructions() +
-                                    ", ImageUrl: " + recipe.getImageUrl());
                             if (recipe.getCategory() != null && recipe.getCategory().contains(selectedCategory)) {
                                 categoryRecipeList.add(recipe);
                             }
                         }
-                        Log.d(TAG, "Recipes in category '" + selectedCategory + "': " + categoryRecipeList.size());
                         runOnUiThread(() -> {
                             if (categoryRecipeAdapter == null) {
                                 categoryRecipeAdapter = new RecipeAdapter(categoryRecipeList, R.layout.recipe_item_main);
@@ -159,8 +156,6 @@ public class HomeActivity extends AppCompatActivity {
                                 categoryRecipeAdapter.notifyDataSetChanged();
                             }
                         });
-                    } else {
-                        Log.e(TAG, "Error fetching category recipes", task.getException());
                     }
                 });
     }
@@ -172,18 +167,10 @@ public class HomeActivity extends AppCompatActivity {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         allRecipesList.clear();
-                        Log.d(TAG, "Fetching all recipes");
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             Recipe recipe = document.toObject(Recipe.class);
-                            // Log recipe details
-                            Log.d(TAG, "Recipe ID: " + recipe.getId() +
-                                    ", Title: " + recipe.getTitle() +
-                                    ", Categories: " + (recipe.getCategory() != null ? recipe.getCategory().toString() : "null") +
-                                    ", Instructions: " + recipe.getInstructions() +
-                                    ", ImageUrl: " + recipe.getImageUrl());
                             allRecipesList.add(recipe);
                         }
-                        Log.d(TAG, "Total recipes fetched: " + allRecipesList.size());
                         runOnUiThread(() -> {
                             if (allRecipesAdapter == null) {
                                 allRecipesAdapter = new RecipeAdapter(allRecipesList, R.layout.recipe_item_search);
@@ -192,8 +179,6 @@ public class HomeActivity extends AppCompatActivity {
                                 allRecipesAdapter.notifyDataSetChanged();
                             }
                         });
-                    } else {
-                        Log.e(TAG, "Error fetching all recipes", task.getException());
                     }
                 });
     }

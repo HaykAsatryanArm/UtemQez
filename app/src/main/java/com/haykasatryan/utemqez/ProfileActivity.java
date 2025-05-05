@@ -1,17 +1,17 @@
 package com.haykasatryan.utemqez;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -63,7 +63,6 @@ public class ProfileActivity extends AppCompatActivity {
     private RecyclerView userRecipesRecyclerView;
     private RecipeAdapter userRecipesAdapter;
     private final List<Recipe> userRecipesList = new ArrayList<>();
-    private static final String TAG = "ProfileActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +89,9 @@ public class ProfileActivity extends AppCompatActivity {
         userRecipesAdapter = new RecipeAdapter(userRecipesList, R.layout.recipe_item_search);
         userRecipesRecyclerView.setAdapter(userRecipesAdapter);
 
+        // Set delete listener
+        userRecipesAdapter.setOnDeleteClickListener(recipe -> showDeleteConfirmationDialog(recipe));
+
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             userName.setText(user.getDisplayName() != null ? user.getDisplayName() : "User");
@@ -115,7 +117,6 @@ public class ProfileActivity extends AppCompatActivity {
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         userRecipesList.clear();
-                        Log.d(TAG, "Fetching recipes for userId: " + userId);
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             try {
                                 Recipe recipe = new Recipe();
@@ -152,18 +153,11 @@ public class ProfileActivity extends AppCompatActivity {
                                 }
                                 recipe.setNutrition(nutrition);
 
-                                Log.d(TAG, "Recipe ID: " + recipe.getId() +
-                                        ", Title: " + recipe.getTitle() +
-                                        ", Categories: " + (recipe.getCategory() != null ? recipe.getCategory().toString() : "null") +
-                                        ", Instructions: " + recipe.getInstructions() +
-                                        ", ImageUrl: " + recipe.getImageUrl() +
-                                        ", UserId: " + recipe.getUserId());
                                 userRecipesList.add(recipe);
                             } catch (Exception e) {
-                                Log.e(TAG, "Error deserializing recipe: " + document.getId(), e);
+                                runOnUiThread(() -> Toast.makeText(this, "Error loading recipe: " + document.getId(), Toast.LENGTH_SHORT).show());
                             }
                         }
-                        Log.d(TAG, "Total user recipes fetched: " + userRecipesList.size());
                         runOnUiThread(() -> {
                             userRecipesAdapter.notifyDataSetChanged();
                             TextView noRecipesText = findViewById(R.id.noRecipesText);
@@ -171,7 +165,6 @@ public class ProfileActivity extends AppCompatActivity {
                             userRecipesRecyclerView.setVisibility(userRecipesList.isEmpty() ? View.GONE : View.VISIBLE);
                         });
                     } else {
-                        Log.e(TAG, "Error fetching user recipes", task.getException());
                         runOnUiThread(() -> {
                             Toast.makeText(this, "Failed to load recipes: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                             TextView noRecipesText = findViewById(R.id.noRecipesText);
@@ -179,6 +172,29 @@ public class ProfileActivity extends AppCompatActivity {
                             userRecipesRecyclerView.setVisibility(View.GONE);
                         });
                     }
+                });
+    }
+
+    private void showDeleteConfirmationDialog(Recipe recipe) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Recipe")
+                .setMessage("Are you sure you want to delete \"" + recipe.getTitle() + "\"?")
+                .setPositiveButton("Delete", (dialog, which) -> deleteRecipe(recipe))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void deleteRecipe(Recipe recipe) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("recipes")
+                .document(String.valueOf(recipe.getId()))
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Recipe deleted successfully", Toast.LENGTH_SHORT).show();
+                    fetchUserRecipes(mAuth.getCurrentUser().getUid());
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to delete recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -204,7 +220,7 @@ public class ProfileActivity extends AppCompatActivity {
         btnAddCategory = recipeDialog.findViewById(R.id.btnAddCategory);
         btnPostRecipe = recipeDialog.findViewById(R.id.btnPostRecipe);
 
-        ImageButton btnClosePopup = recipeDialog.findViewById(R.id.btnClosePopup);
+        TextView btnClosePopup = recipeDialog.findViewById(R.id.btnClosePopup);
         btnClosePopup.setOnClickListener(v -> recipeDialog.dismiss());
 
         btnSelectImage.setOnClickListener(v -> pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
@@ -301,8 +317,11 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
 
-        String instructions = instructionList.isEmpty() ? "No instructions found" :
-                String.join(" ", instructionList.stream().map(s -> (instructionList.indexOf(s) + 1) + ". " + s).toList());
+        String instructions = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            instructions = instructionList.isEmpty() ? "No instructions found" :
+                    String.join(" ", instructionList.stream().map(s -> (instructionList.indexOf(s) + 1) + ". " + s).toList());
+        }
 
         Map<String, String> nutrition = new HashMap<>();
         nutrition.put("calories", nutritionCalories.getText().toString().isEmpty() ? "0 Calories" : nutritionCalories.getText().toString() + " Calories");
@@ -340,7 +359,6 @@ public class ProfileActivity extends AppCompatActivity {
                     fetchUserRecipes(user.getUid());
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to post recipe", e);
                     Toast.makeText(this, "Failed to post recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
@@ -373,7 +391,7 @@ public class ProfileActivity extends AppCompatActivity {
                         profileImage.setImageBitmap(bitmap);
                         uploadImageToCloudinary(bitmap, true);
                     } catch (FileNotFoundException e) {
-                        Log.e(TAG, "Error loading profile image", e);
+                        Toast.makeText(this, "Error loading profile image", Toast.LENGTH_SHORT).show();
                     }
                 }
             }
@@ -389,7 +407,7 @@ public class ProfileActivity extends AppCompatActivity {
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                         uploadImageToCloudinary(bitmap, false);
                     } catch (FileNotFoundException e) {
-                        Log.e(TAG, "Error loading recipe image", e);
+                        Toast.makeText(this, "Error loading recipe image", Toast.LENGTH_SHORT).show();
                     }
                 }
             }
@@ -408,7 +426,6 @@ public class ProfileActivity extends AppCompatActivity {
                     runOnUiThread(() -> imageUrlText.setText(recipeImageUrl));
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Image upload failed", e);
                 runOnUiThread(() -> Toast.makeText(this, "Failed to upload image", Toast.LENGTH_SHORT).show());
             }
         }).start();
@@ -420,7 +437,7 @@ public class ProfileActivity extends AppCompatActivity {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
             out.flush();
         } catch (Exception e) {
-            Log.e(TAG, "Error converting bitmap to file", e);
+            Toast.makeText(this, "Error converting image", Toast.LENGTH_SHORT).show();
         }
         return file;
     }
@@ -458,7 +475,6 @@ public class ProfileActivity extends AppCompatActivity {
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error loading profile picture", e);
                     profileImage.setImageResource(R.drawable.user);
                 });
     }
