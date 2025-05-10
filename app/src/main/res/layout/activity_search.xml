@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".SearchActivity">
+
+    <!-- Fixed Background Image -->
+    <ImageView
+        android:id="@+id/background_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/app_name"
+        android:scaleType="centerCrop"
+        android:src="@drawable/pattern"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- NestedScrollView for scrollable content -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/nestedScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/main"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="88dp">
+
+            <LinearLayout
+                android:id="@+id/header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <!-- Horizontal layout for search bar and profile icon -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <!-- Search Bar -->
+                    <EditText
+                        android:id="@+id/searchBar"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/search_bar_background"
+                        android:hint="Search recipes..."
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:textColor="@color/blackot"
+                        android:textColorHint="@color/grey"
+                        android:textSize="16sp" />
+
+                    <!-- Profile Icon -->
+                    <ImageButton
+                        android:id="@+id/nav_profile"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="16dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Profile"
+                        android:padding="8dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/profile" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/searchRecipesRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:padding="12dp"
+                android:paddingBottom="16dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/header"
+                tools:listitem="@layout/recipe_item_search" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Bottom Navigation Bar -->
+    <LinearLayout
+        android:id="@+id/bottom_navigation"
+        android:layout_width="0dp"
+        android:layout_height="72dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="76dp"
+        android:background="@drawable/rounded_nav_background"
+        android:elevation="16dp"
+        android:translationZ="16dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <ImageButton
+            android:id="@+id/nav_home"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:contentDescription="Home"
+            android:padding="14dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/home" />
+
+        <ImageButton
+            android:id="@+id/nav_search"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:contentDescription="Search"
+            android:padding="14dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/search" />
+
+        <ImageButton
+            android:id="@+id/nav_ai"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:contentDescription="AI"
+            android:padding="14dp"
+            android:scaleType="fitCenter"
+            app:srcCompat="@drawable/chat" />
+
+        <ImageButton
+            android:id="@+id/nav_liked"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:contentDescription="Liked"
+            android:padding="14dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/note" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

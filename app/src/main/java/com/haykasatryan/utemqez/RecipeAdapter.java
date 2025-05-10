@@ -1,6 +1,5 @@
 package com.haykasatryan.utemqez;
 
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,90 +9,176 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.squareup.picasso.Picasso;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class RecipeAdapter extends RecyclerView.Adapter<RecipeAdapter.RecipeViewHolder> {
-    private final List<Recipe> recipeList;
-    private final int layoutResource;
-    private OnDeleteClickListener onDeleteClickListener;
+public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
+    private static final int TYPE_RECIPE = 0;
+    private static final int TYPE_LOADING = 1;
+    private List<Recipe> recipeList;
+    private final int layoutResId;
+    private OnDeleteClickListener onDeleteClickListener;
+    private boolean isLoading = false;
+
+    // Interface for delete button click events
     public interface OnDeleteClickListener {
         void onDeleteClick(Recipe recipe);
     }
 
-    public RecipeAdapter(List<Recipe> recipeList, int layoutResource) {
+    public RecipeAdapter(List<Recipe> recipeList, int layoutResId) {
         this.recipeList = recipeList;
-        this.layoutResource = layoutResource;
+        this.layoutResId = layoutResId;
+        setHasStableIds(true); // Enable stable IDs
+    }
+
+    @Override
+    public long getItemId(int position) {
+        if (getItemViewType(position) == TYPE_RECIPE) {
+            return recipeList.get(position).getId();
+        }
+        return -1; // Loading item has no ID
     }
 
     public void setOnDeleteClickListener(OnDeleteClickListener listener) {
         this.onDeleteClickListener = listener;
     }
 
-    @NonNull
-    @Override
-    public RecipeViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(layoutResource, parent, false);
-        return new RecipeViewHolder(view);
+    public void updateList(List<Recipe> newList) {
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new RecipeDiffCallback(recipeList, newList));
+        this.recipeList = new ArrayList<>(newList);
+        diffResult.dispatchUpdatesTo(this);
+    }
+
+    public void setLoading(boolean loading) {
+        if (isLoading != loading) {
+            isLoading = loading;
+            if (loading) {
+                notifyItemInserted(recipeList.size());
+            } else {
+                notifyItemRemoved(recipeList.size());
+            }
+        }
     }
 
     @Override
-    public void onBindViewHolder(@NonNull RecipeViewHolder holder, int position) {
-        Recipe recipe = recipeList.get(position);
-        holder.title.setText(recipe.getTitle());
+    public int getItemViewType(int position) {
+        return (position == recipeList.size() && isLoading) ? TYPE_LOADING : TYPE_RECIPE;
+    }
 
-        // Load image using Picasso
-        if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
-            Picasso.get()
-                    .load(recipe.getImageUrl().replace("http://", "https://"))
-                    .placeholder(R.drawable.user)
-                    .error(R.drawable.user)
-                    .into(holder.image);
-        }
-
-        // Show delete button only for user's own recipes
-        String currentUserId = FirebaseAuth.getInstance().getCurrentUser() != null ?
-                FirebaseAuth.getInstance().getCurrentUser().getUid() : null;
-        if (currentUserId != null && currentUserId.equals(recipe.getUserId())) {
-            holder.deleteButton.setVisibility(View.VISIBLE);
-            holder.deleteButton.setOnClickListener(v -> {
-                if (onDeleteClickListener != null) {
-                    onDeleteClickListener.onDeleteClick(recipe);
-                }
-            });
+    @NonNull
+    @Override
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (viewType == TYPE_RECIPE) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(layoutResId, parent, false);
+            return new RecipeViewHolder(view);
         } else {
-            holder.deleteButton.setVisibility(View.GONE);
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.loading_item, parent, false);
+            return new LoadingViewHolder(view);
         }
+    }
 
-        holder.viewDetailsButton.setOnClickListener(v -> {
-            Intent intent = new Intent(holder.itemView.getContext(), RecipeDetailActivity.class);
-            intent.putExtra("recipe", recipe);
-            holder.itemView.getContext().startActivity(intent);
-        });
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        if (holder instanceof RecipeViewHolder) {
+            Recipe recipe = recipeList.get(position);
+            RecipeViewHolder recipeHolder = (RecipeViewHolder) holder;
+            recipeHolder.recipeTitle.setText(recipe.getTitle());
+
+            // Optimized Glide loading
+            RequestOptions options = new RequestOptions()
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .override(layoutResId == R.layout.recipe_item_main ? 168 : 120, // Resize based on layout
+                            layoutResId == R.layout.recipe_item_main ? 128 : 100)
+                    .placeholder(R.drawable.recipe_image)
+                    .error(R.drawable.recipe_image);
+
+            Glide.with(holder.itemView.getContext())
+                    .load(recipe.getImageUrl())
+                    .apply(options)
+                    .thumbnail(0.25f) // Load a low-res thumbnail first
+                    .into(recipeHolder.recipeImage);
+
+            recipeHolder.viewDetailsButton.setOnClickListener(v -> {
+                // Handle view details click (implement as needed)
+            });
+
+            if (recipeHolder.deleteButton != null) {
+                recipeHolder.deleteButton.setVisibility(onDeleteClickListener != null ? View.VISIBLE : View.GONE);
+                recipeHolder.deleteButton.setOnClickListener(v -> {
+                    if (onDeleteClickListener != null) {
+                        onDeleteClickListener.onDeleteClick(recipe);
+                    }
+                });
+            }
+        }
+        // No binding needed for LoadingViewHolder
     }
 
     @Override
     public int getItemCount() {
-        return recipeList.size();
+        return recipeList.size() + (isLoading ? 1 : 0);
     }
 
-    public static class RecipeViewHolder extends RecyclerView.ViewHolder {
-        TextView title;
-        ImageView image;
+    static class RecipeViewHolder extends RecyclerView.ViewHolder {
+        ImageView recipeImage;
+        TextView recipeTitle;
         Button viewDetailsButton;
         ImageButton deleteButton;
 
         public RecipeViewHolder(@NonNull View itemView) {
             super(itemView);
-            title = itemView.findViewById(R.id.recipeTitle);
-            image = itemView.findViewById(R.id.recipeImage);
+            recipeImage = itemView.findViewById(R.id.recipeImage);
+            recipeTitle = itemView.findViewById(R.id.recipeTitle);
             viewDetailsButton = itemView.findViewById(R.id.viewDetailsButton);
             deleteButton = itemView.findViewById(R.id.deleteButton);
+        }
+    }
+
+    static class LoadingViewHolder extends RecyclerView.ViewHolder {
+        public LoadingViewHolder(@NonNull View itemView) {
+            super(itemView);
+        }
+    }
+
+    // DiffUtil callback for efficient updates
+    static class RecipeDiffCallback extends DiffUtil.Callback {
+        private final List<Recipe> oldList;
+        private final List<Recipe> newList;
+
+        RecipeDiffCallback(List<Recipe> oldList, List<Recipe> newList) {
+            this.oldList = oldList;
+            this.newList = newList;
+        }
+
+        @Override
+        public int getOldListSize() {
+            return oldList.size();
+        }
+
+        @Override
+        public int getNewListSize() {
+            return newList.size();
+        }
+
+        @Override
+        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+            return oldList.get(oldItemPosition).getId() == newList.get(newItemPosition).getId();
+        }
+
+        @Override
+        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+            Recipe oldRecipe = oldList.get(oldItemPosition);
+            Recipe newRecipe = newList.get(newItemPosition);
+            return oldRecipe.getTitle().equals(newRecipe.getTitle()) &&
+                    (oldRecipe.getImageUrl() != null ? oldRecipe.getImageUrl().equals(newRecipe.getImageUrl()) : newRecipe.getImageUrl() == null);
         }
     }
 }

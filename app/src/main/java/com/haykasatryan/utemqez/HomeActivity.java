@@ -8,6 +8,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -17,8 +18,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.Query;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +37,13 @@ public class HomeActivity extends AppCompatActivity {
 
     private Button buttonBreakfast, buttonSalads, buttonDinner, buttonSnacks;
     private Button activeButton;
+
+    // Pagination variables
+    private static final int PAGE_SIZE = 10; // Number of recipes to load per page
+    private DocumentSnapshot lastCategoryDoc = null; // Last document for category recipes
+    private DocumentSnapshot lastAllRecipesDoc = null; // Last document for all recipes
+    private boolean isLoadingCategory = false; // Prevent multiple simultaneous loads
+    private boolean isLoadingAllRecipes = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,11 +85,17 @@ public class HomeActivity extends AppCompatActivity {
 
         // Initialize category RecyclerView
         recipeRecyclerView = findViewById(R.id.recipeRecyclerView);
-        recipeRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        LinearLayoutManager categoryLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
+        recipeRecyclerView.setLayoutManager(categoryLayoutManager);
+        categoryRecipeAdapter = new RecipeAdapter(categoryRecipeList, R.layout.recipe_item_main);
+        recipeRecyclerView.setAdapter(categoryRecipeAdapter);
 
         // Initialize all recipes RecyclerView
         allRecipesRecyclerView = findViewById(R.id.allRecipesRecyclerView);
-        allRecipesRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        LinearLayoutManager allRecipesLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        allRecipesRecyclerView.setLayoutManager(allRecipesLayoutManager);
+        allRecipesAdapter = new RecipeAdapter(allRecipesList, R.layout.recipe_item_search);
+        allRecipesRecyclerView.setAdapter(allRecipesAdapter);
 
         // Category buttons
         buttonBreakfast = findViewById(R.id.buttonBreakfast);
@@ -100,19 +115,26 @@ public class HomeActivity extends AppCompatActivity {
         fetchRecipesByCategory("Breakfast");
         fetchAllRecipes();
 
+        // Add scroll listener for allRecipesRecyclerView
+        allRecipesRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+                int totalItemCount = layoutManager.getItemCount();
+                int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
+
+                if (!isLoadingAllRecipes && totalItemCount <= (lastVisibleItem + 3)) {
+                    fetchAllRecipes(); // Load more recipes
+                }
+            }
+        });
+
         // Bottom navigation click listeners
-        findViewById(R.id.nav_home).setOnClickListener(v -> {
-            // Handle Home click
-        });
-        findViewById(R.id.nav_search).setOnClickListener(v -> {
-            // Handle Search click
-        });
-        findViewById(R.id.nav_ai).setOnClickListener(v -> {
-            // Handle AI click
-        });
-        findViewById(R.id.nav_liked).setOnClickListener(v -> {
-            // Handle Liked click
-        });
+        findViewById(R.id.nav_home).setOnClickListener(v -> {});
+        findViewById(R.id.nav_search).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, SearchActivity.class)));
+        findViewById(R.id.nav_ai).setOnClickListener(v -> {});
+        findViewById(R.id.nav_liked).setOnClickListener(v -> {});
     }
 
     private void setCategoryButtonListeners() {
@@ -131,55 +153,77 @@ public class HomeActivity extends AppCompatActivity {
             selectedButton.setSelected(true);
             selectedButton.setTextColor(getResources().getColor(R.color.white));
             activeButton = selectedButton;
+            lastCategoryDoc = null; // Reset pagination for new category
+            categoryRecipeList.clear();
             fetchRecipesByCategory(category);
         }
     }
 
     private void fetchRecipesByCategory(String selectedCategory) {
+        if (isLoadingCategory) return;
+        isLoadingCategory = true;
+        categoryRecipeAdapter.setLoading(true); // Show loading indicator
+
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("recipes")
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        categoryRecipeList.clear();
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            Recipe recipe = document.toObject(Recipe.class);
-                            if (recipe.getCategory() != null && recipe.getCategory().contains(selectedCategory)) {
-                                categoryRecipeList.add(recipe);
-                            }
-                        }
-                        runOnUiThread(() -> {
-                            if (categoryRecipeAdapter == null) {
-                                categoryRecipeAdapter = new RecipeAdapter(categoryRecipeList, R.layout.recipe_item_main);
-                                recipeRecyclerView.setAdapter(categoryRecipeAdapter);
-                            } else {
-                                categoryRecipeAdapter.notifyDataSetChanged();
-                            }
-                        });
+        Query query = db.collection("recipes")
+                .whereArrayContains("category", selectedCategory)
+                .limit(PAGE_SIZE);
+
+        if (lastCategoryDoc != null) {
+            query = query.startAfter(lastCategoryDoc);
+        }
+
+        query.get().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                for (DocumentSnapshot document : task.getResult()) {
+                    Recipe recipe = document.toObject(Recipe.class);
+                    if (!categoryRecipeList.contains(recipe)) { // Avoid duplicates
+                        categoryRecipeList.add(recipe);
                     }
+                }
+                lastCategoryDoc = task.getResult().getDocuments().isEmpty() ? null :
+                        task.getResult().getDocuments().get(task.getResult().size() - 1);
+
+                runOnUiThread(() -> {
+                    categoryRecipeAdapter.notifyDataSetChanged();
+                    categoryRecipeAdapter.setLoading(false); // Hide loading indicator
                 });
+            }
+            isLoadingCategory = false;
+        });
     }
 
     private void fetchAllRecipes() {
+        if (isLoadingAllRecipes) return;
+        isLoadingAllRecipes = true;
+        allRecipesAdapter.setLoading(true); // Show loading indicator
+
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("recipes")
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        allRecipesList.clear();
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            Recipe recipe = document.toObject(Recipe.class);
-                            allRecipesList.add(recipe);
-                        }
-                        runOnUiThread(() -> {
-                            if (allRecipesAdapter == null) {
-                                allRecipesAdapter = new RecipeAdapter(allRecipesList, R.layout.recipe_item_search);
-                                allRecipesRecyclerView.setAdapter(allRecipesAdapter);
-                            } else {
-                                allRecipesAdapter.notifyDataSetChanged();
-                            }
-                        });
+        Query query = db.collection("recipes")
+                .orderBy("id") // Ensure consistent ordering
+                .limit(PAGE_SIZE);
+
+        if (lastAllRecipesDoc != null) {
+            query = query.startAfter(lastAllRecipesDoc);
+        }
+
+        query.get().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                for (DocumentSnapshot document : task.getResult()) {
+                    Recipe recipe = document.toObject(Recipe.class);
+                    if (!allRecipesList.contains(recipe)) { // Avoid duplicates
+                        allRecipesList.add(recipe);
                     }
+                }
+                lastAllRecipesDoc = task.getResult().getDocuments().isEmpty() ? null :
+                        task.getResult().getDocuments().get(task.getResult().size() - 1);
+
+                runOnUiThread(() -> {
+                    allRecipesAdapter.notifyDataSetChanged();
+                    allRecipesAdapter.setLoading(false); // Hide loading indicator
                 });
+            }
+            isLoadingAllRecipes = false;
+        });
     }
 }

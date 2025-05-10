@@ -68,24 +68,19 @@ public class FirestoreUploader {
         }
 
         try {
-            // Step 2: Parse the JSON array
             JSONArray jsonArray = new JSONArray(jsonString);
 
             for (int i = 0; i < jsonArray.length(); i++) {
-                // Step 3: Extract the object data
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
 
-                // Create a map to store data to be uploaded
                 Map<String, Object> recipeData = new HashMap<>();
 
-                // Extract fields with null checks
                 recipeData.put("id", jsonObject.optInt("id", -1)); // Default value if not present
                 recipeData.put("title", jsonObject.optString("title", ""));
                 recipeData.put("readyInMinutes", jsonObject.optInt("readyInMinutes", 0));
                 recipeData.put("sourceUrl", jsonObject.optString("sourceUrl", ""));
                 recipeData.put("instructions", jsonObject.optString("instructions", ""));
 
-                // Extract ingredients (list of maps)
                 JSONArray ingredientsArray = jsonObject.optJSONArray("ingredients");
                 if (ingredientsArray != null) {
                     List<Map<String, String>> ingredientsList = new ArrayList<>();
