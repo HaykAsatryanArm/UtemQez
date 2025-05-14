@@ -1,5 +1,6 @@
 package com.haykasatryan.utemqez;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,7 +35,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
 
     public RecipeAdapter(List<Recipe> recipeList, int layoutResId) {
-        this.recipeList = recipeList;
+        this.recipeList = recipeList != null ? recipeList : new ArrayList<>();
         this.layoutResId = layoutResId;
         setHasStableIds(true); // Enable stable IDs
     }
@@ -52,8 +53,9 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
 
     public void updateList(List<Recipe> newList) {
-        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new RecipeDiffCallback(recipeList, newList));
-        this.recipeList = new ArrayList<>(newList);
+        List<Recipe> newListSafe = newList != null ? new ArrayList<>(newList) : new ArrayList<>();
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new RecipeDiffCallback(recipeList, newListSafe));
+        this.recipeList = newListSafe;
         diffResult.dispatchUpdatesTo(this);
     }
 
@@ -90,12 +92,12 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         if (holder instanceof RecipeViewHolder) {
             Recipe recipe = recipeList.get(position);
             RecipeViewHolder recipeHolder = (RecipeViewHolder) holder;
-            recipeHolder.recipeTitle.setText(recipe.getTitle());
+            recipeHolder.recipeTitle.setText(recipe.getTitle() != null ? recipe.getTitle() : "");
 
             // Optimized Glide loading
             RequestOptions options = new RequestOptions()
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .override(layoutResId == R.layout.recipe_item_main ? 168 : 120, // Resize based on layout
+                    .override(layoutResId == R.layout.recipe_item_main ? 168 : 120,
                             layoutResId == R.layout.recipe_item_main ? 128 : 100)
                     .placeholder(R.drawable.recipe_image)
                     .error(R.drawable.recipe_image);
@@ -106,8 +108,11 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     .thumbnail(0.25f) // Load a low-res thumbnail first
                     .into(recipeHolder.recipeImage);
 
+            // Handle View Details button click
             recipeHolder.viewDetailsButton.setOnClickListener(v -> {
-                // Handle view details click (implement as needed)
+                Intent intent = new Intent(holder.itemView.getContext(), RecipeDetailActivity.class);
+                intent.putExtra("recipe", recipe);
+                holder.itemView.getContext().startActivity(intent);
             });
 
             if (recipeHolder.deleteButton != null) {
@@ -154,8 +159,8 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         private final List<Recipe> newList;
 
         RecipeDiffCallback(List<Recipe> oldList, List<Recipe> newList) {
-            this.oldList = oldList;
-            this.newList = newList;
+            this.oldList = oldList != null ? oldList : new ArrayList<>();
+            this.newList = newList != null ? newList : new ArrayList<>();
         }
 
         @Override
@@ -177,8 +182,9 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
             Recipe oldRecipe = oldList.get(oldItemPosition);
             Recipe newRecipe = newList.get(newItemPosition);
-            return oldRecipe.getTitle().equals(newRecipe.getTitle()) &&
-                    (oldRecipe.getImageUrl() != null ? oldRecipe.getImageUrl().equals(newRecipe.getImageUrl()) : newRecipe.getImageUrl() == null);
+            return oldRecipe.getTitle() != null && oldRecipe.getTitle().equals(newRecipe.getTitle()) &&
+                    (oldRecipe.getImageUrl() != null ? oldRecipe.getImageUrl().equals(newRecipe.getImageUrl()) :
+                            newRecipe.getImageUrl() == null);
         }
     }
 }

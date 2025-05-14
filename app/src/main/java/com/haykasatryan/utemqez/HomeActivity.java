@@ -23,27 +23,29 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class HomeActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
     private TextView welcomeText;
-
     private RecyclerView recipeRecyclerView, allRecipesRecyclerView;
     private RecipeAdapter categoryRecipeAdapter, allRecipesAdapter;
     private final List<Recipe> categoryRecipeList = new ArrayList<>();
     private final List<Recipe> allRecipesList = new ArrayList<>();
-
+    private final Set<Long> categoryRecipeIds = new HashSet<>();
+    private final Set<Long> allRecipeIds = new HashSet<>();
     private Button buttonBreakfast, buttonSalads, buttonDinner, buttonSnacks;
     private Button activeButton;
-
-    // Pagination variables
     private static final int PAGE_SIZE = 10; // Number of recipes to load per page
     private DocumentSnapshot lastCategoryDoc = null; // Last document for category recipes
     private DocumentSnapshot lastAllRecipesDoc = null; // Last document for all recipes
     private boolean isLoadingCategory = false; // Prevent multiple simultaneous loads
     private boolean isLoadingAllRecipes = false;
+    private long lastScrollTime = 0;
+    private static final long DEBOUNCE_MS = 500; // Debounce interval for scroll
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,7 +126,10 @@ public class HomeActivity extends AppCompatActivity {
                 int totalItemCount = layoutManager.getItemCount();
                 int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
 
-                if (!isLoadingAllRecipes && totalItemCount <= (lastVisibleItem + 3)) {
+                long currentTime = System.currentTimeMillis();
+                if (!isLoadingAllRecipes && totalItemCount <= (lastVisibleItem + 3) &&
+                        (currentTime - lastScrollTime > DEBOUNCE_MS)) {
+                    lastScrollTime = currentTime;
                     fetchAllRecipes(); // Load more recipes
                 }
             }
@@ -153,8 +158,11 @@ public class HomeActivity extends AppCompatActivity {
             selectedButton.setSelected(true);
             selectedButton.setTextColor(getResources().getColor(R.color.white));
             activeButton = selectedButton;
-            lastCategoryDoc = null; // Reset pagination for new category
+            lastCategoryDoc = null;
+            categoryRecipeIds.clear();
+            List<Recipe> oldList = new ArrayList<>(categoryRecipeList);
             categoryRecipeList.clear();
+            categoryRecipeAdapter.updateList(new ArrayList<>()); // Notify adapter of cleared list
             fetchRecipesByCategory(category);
         }
     }
@@ -175,19 +183,28 @@ public class HomeActivity extends AppCompatActivity {
 
         query.get().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
+                List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     Recipe recipe = document.toObject(Recipe.class);
-                    if (!categoryRecipeList.contains(recipe)) { // Avoid duplicates
-                        categoryRecipeList.add(recipe);
+                    if (!categoryRecipeIds.contains(recipe.getId())) { // Avoid duplicates
+                        newRecipes.add(recipe);
+                        categoryRecipeIds.add(recipe.getId());
                     }
                 }
                 lastCategoryDoc = task.getResult().getDocuments().isEmpty() ? null :
                         task.getResult().getDocuments().get(task.getResult().size() - 1);
 
                 runOnUiThread(() -> {
-                    categoryRecipeAdapter.notifyDataSetChanged();
+                    List<Recipe> updatedList = new ArrayList<>(categoryRecipeList);
+                    updatedList.addAll(newRecipes);
+                    categoryRecipeList.clear();
+                    categoryRecipeList.addAll(updatedList);
+                    categoryRecipeAdapter.updateList(updatedList); // Use DiffUtil
                     categoryRecipeAdapter.setLoading(false); // Hide loading indicator
                 });
+            } else {
+                // Handle error (e.g., log or show toast)
+                runOnUiThread(() -> categoryRecipeAdapter.setLoading(false));
             }
             isLoadingCategory = false;
         });
@@ -209,19 +226,28 @@ public class HomeActivity extends AppCompatActivity {
 
         query.get().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
+                List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     Recipe recipe = document.toObject(Recipe.class);
-                    if (!allRecipesList.contains(recipe)) { // Avoid duplicates
-                        allRecipesList.add(recipe);
+                    if (!allRecipeIds.contains(recipe.getId())) { // Avoid duplicates
+                        newRecipes.add(recipe);
+                        allRecipeIds.add(recipe.getId());
                     }
                 }
                 lastAllRecipesDoc = task.getResult().getDocuments().isEmpty() ? null :
                         task.getResult().getDocuments().get(task.getResult().size() - 1);
 
                 runOnUiThread(() -> {
-                    allRecipesAdapter.notifyDataSetChanged();
+                    List<Recipe> updatedList = new ArrayList<>(allRecipesList);
+                    updatedList.addAll(newRecipes);
+                    allRecipesList.clear();
+                    allRecipesList.addAll(updatedList);
+                    allRecipesAdapter.updateList(updatedList); // Use DiffUtil
                     allRecipesAdapter.setLoading(false); // Hide loading indicator
                 });
+            } else {
+                // Handle error (e.g., log or show toast)
+                runOnUiThread(() -> allRecipesAdapter.setLoading(false));
             }
             isLoadingAllRecipes = false;
         });

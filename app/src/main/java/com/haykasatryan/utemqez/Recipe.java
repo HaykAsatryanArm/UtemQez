@@ -67,7 +67,7 @@ public class Recipe implements Parcelable {
     }
 
     // Getters
-    public int getId() { return id; }
+    public long getId() { return id; }
     public String getTitle() { return title; }
     public int getReadyInMinutes() { return readyInMinutes; }
     public String getSourceUrl() { return sourceUrl; }
