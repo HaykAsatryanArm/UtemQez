@@ -2,9 +2,11 @@
 agp = "8.8.1"
 androidActivation = "1.6.7"
 androidMail = "1.6.6"
+androidxConstraintlayout = "latest_version"
 androidxJunit = "1.1.3"
 appcompatVersion = "1.4.1"
 cloudinaryAndroid = "2.3.1"
+comGoogleFirebaseFirebaseFirestore = "latest_version"
 compiler = "4.16.0"
 constraintlayoutVersion = "2.1.3"
 espressoCoreVersion = "3.4.0"
@@ -16,6 +18,7 @@ gbutton = "v1.0.19"
 generativeai = "0.9.0"
 generativeaiVersion = "0.4.0"
 glide = "4.16.0"
+glideVersion = "latest_version"
 googleFirebaseAuth = "21.1.0"
 googleFirebaseAuthVersion = "21.0.1"
 googleFirebaseFirestore = "24.5.0"
@@ -39,6 +42,7 @@ firebaseAuth = "23.2.0"
 firebaseDatabase = "21.0.0"
 firebaseFirestore = "25.1.3"
 reactiveStreams = "1.0.4"
+recyclerview = "latest_version"
 
 [libraries]
 android-activation = { module = "com.sun.mail:android-activation", version.ref = "androidActivation" }
@@ -49,6 +53,7 @@ boot-spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot
 cloudinary-android = { module = "com.cloudinary:cloudinary-android", version.ref = "cloudinaryAndroid" }
 compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "compiler" }
 constraintlayout-v213 = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayoutVersion" }
+constraintlayout-vlatestversion = { module = "androidx.constraintlayout:constraintlayout", version.ref = "androidxConstraintlayout" }
 espresso-core-v340 = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCoreVersion" }
 firebase-auth-v2101 = { module = "com.google.firebase:firebase-auth", version.ref = "googleFirebaseAuthVersion" }
 firebase-auth-v2110 = { module = "com.google.firebase:firebase-auth", version.ref = "googleFirebaseAuth" }
@@ -56,6 +61,7 @@ firebase-auth-v2200 = { module = "com.google.firebase:firebase-auth", version.re
 firebase-firestore-v2401 = { module = "com.google.firebase:firebase-firestore", version.ref = "googleFirebaseFirestoreVersion" }
 firebase-firestore-v24100 = { module = "com.google.firebase:firebase-firestore", version.ref = "firebaseFirestoreVersion" }
 firebase-firestore-v2450 = { module = "com.google.firebase:firebase-firestore", version.ref = "googleFirebaseFirestore" }
+firebase-firestore-vlatestversion = { module = "com.google.firebase:firebase-firestore", version.ref = "comGoogleFirebaseFirebaseFirestore" }
 firebase-storage = { module = "com.google.firebase:firebase-storage", version.ref = "firebaseStorage" }
 firebase-storage-v2010 = { module = "com.google.firebase:firebase-storage", version.ref = "firebaseStorageVersion" }
 firebase-storage-v2030 = { module = "com.google.firebase:firebase-storage", version.ref = "googleFirebaseStorage" }
@@ -63,6 +69,7 @@ gbutton = { module = "com.github.TutorialsAndroid:GButton", version.ref = "gbutt
 generativeai = { module = "com.google.ai.client.generativeai:generativeai", version.ref = "generativeai" }
 generativeai-v040 = { module = "com.google.ai.client.generativeai:generativeai", version.ref = "generativeaiVersion" }
 glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
+glide-vlatestversion = { module = "com.github.bumptech.glide:glide", version.ref = "glideVersion" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 imagepicker = { module = "com.github.dhaval2404:imagepicker", version.ref = "imagepicker" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -80,6 +87,7 @@ play-services-auth = { module = "com.google.android.gms:play-services-auth", ver
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
 reactive-streams = { module = "org.reactivestreams:reactive-streams", version.ref = "reactiveStreams" }
+recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }

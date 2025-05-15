@@ -41,6 +41,10 @@ android {
 dependencies {
     implementation(libs.cloudinary.android)
     implementation(libs.okhttp)
+    implementation(libs.firebase.firestore.vlatestversion)
+    implementation(libs.recyclerview)
+    implementation(libs.constraintlayout.vlatestversion)
+    implementation(libs.glide.vlatestversion)
     implementation(libs.generativeai)
     implementation(libs.picasso)
     implementation(libs.android.mail)

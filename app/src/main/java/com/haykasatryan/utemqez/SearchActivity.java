@@ -2,13 +2,11 @@ package com.haykasatryan.utemqez;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.text.Editable;
-import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,29 +21,28 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public class SearchActivity extends AppCompatActivity {
 
+    private static final String TAG = "SearchActivity";
     private RecyclerView searchRecipesRecyclerView;
     private RecipeAdapter searchRecipesAdapter;
     private final List<Recipe> searchRecipesList = new ArrayList<>();
+    private final Set<Long> searchRecipeIds = new HashSet<>();
     private EditText searchBar;
+    private ImageButton searchButton;
 
     // Pagination variables
     private static final int PAGE_SIZE = 10;
     private DocumentSnapshot lastDoc = null;
     private boolean isLoading = false;
     private String currentQuery = "";
-
-    // Debounce variables
-    private final Handler searchHandler = new Handler(Looper.getMainLooper());
-    private static final long DEBOUNCE_DELAY = 300; // 300ms delay
-    private final Runnable searchRunnable = () -> {
-        lastDoc = null; // Reset pagination for new query
-        searchRecipesList.clear();
-        filterRecipes(currentQuery);
-    };
+    private int noResultsCount = 0; // Track consecutive empty result pages
+    private static final int MAX_NO_RESULTS_PAGES = 3; // Stop after 3 empty pages
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,21 +62,18 @@ public class SearchActivity extends AppCompatActivity {
         searchRecipesAdapter = new RecipeAdapter(searchRecipesList, R.layout.recipe_item_search);
         searchRecipesRecyclerView.setAdapter(searchRecipesAdapter);
 
-        // Initialize search bar with debounce
+        // Initialize search bar and button
         searchBar = findViewById(R.id.searchBar);
-        searchBar.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                currentQuery = s.toString().trim();
-                searchHandler.removeCallbacks(searchRunnable);
-                searchHandler.postDelayed(searchRunnable, DEBOUNCE_DELAY);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
+        searchButton = findViewById(R.id.searchButton);
+        searchButton.setOnClickListener(v -> {
+            currentQuery = searchBar.getText().toString().trim().toLowerCase(Locale.US);
+            Log.d(TAG, "Search initiated with query: " + currentQuery);
+            lastDoc = null; // Reset pagination for new query
+            searchRecipeIds.clear();
+            searchRecipesList.clear();
+            noResultsCount = 0; // Reset no results counter
+            searchRecipesAdapter.updateList(new ArrayList<>()); // Clear RecyclerView
+            filterRecipes(currentQuery);
         });
 
         // Add scroll listener
@@ -92,12 +86,14 @@ public class SearchActivity extends AppCompatActivity {
                 int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
 
                 if (!isLoading && totalItemCount <= (lastVisibleItem + 3)) {
+                    Log.d(TAG, "Loading more recipes for query: " + currentQuery);
                     filterRecipes(currentQuery); // Load more recipes
                 }
             }
         });
 
         // Fetch initial recipes
+        Log.d(TAG, "Fetching initial recipes");
         filterRecipes("");
 
         // Bottom navigation click listeners
@@ -127,7 +123,10 @@ public class SearchActivity extends AppCompatActivity {
     }
 
     private void filterRecipes(String query) {
-        if (isLoading) return;
+        if (isLoading) {
+            Log.d(TAG, "Skipping filterRecipes, already loading");
+            return;
+        }
         isLoading = true;
         searchRecipesAdapter.setLoading(true); // Show loading indicator
 
@@ -145,28 +144,87 @@ public class SearchActivity extends AppCompatActivity {
                 List<Recipe> filteredList = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     Recipe recipe = document.toObject(Recipe.class);
-                    if (query.isEmpty() || recipe.getTitle().toLowerCase().contains(query.toLowerCase())) {
-                        if (!searchRecipesList.contains(recipe)) { // Avoid duplicates
+                    if (recipe != null && !searchRecipeIds.contains(recipe.getId())) {
+                        // Check if recipe matches query (title, ingredients, category, or instructions)
+                        boolean matches = false;
+                        String queryLower = query.toLowerCase(Locale.US);
+                        Log.d(TAG, "Checking recipe ID: " + recipe.getId() + ", Title: " + (recipe.getTitle() != null ? recipe.getTitle() : "null"));
+
+                        // Title match
+                        if (recipe.getTitle() != null && recipe.getTitle().toLowerCase(Locale.US).contains(queryLower)) {
+                            matches = true;
+                            Log.d(TAG, "Match found in title: " + recipe.getTitle());
+                        }
+
+                        // Ingredient match
+                        if (!matches && recipe.getIngredients() != null) {
+                            for (Ingredient ingredient : recipe.getIngredients()) {
+                                if (ingredient.getName() != null && ingredient.getName().toLowerCase(Locale.US).contains(queryLower)) {
+                                    matches = true;
+                                    Log.d(TAG, "Match found in ingredient: " + ingredient.getName());
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Category match
+                        if (!matches && recipe.getCategory() != null) {
+                            for (String category : recipe.getCategory()) {
+                                if (category != null && category.toLowerCase(Locale.US).contains(queryLower)) {
+                                    matches = true;
+                                    Log.d(TAG, "Match found in category: " + category);
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Instructions match
+                        if (!matches && recipe.getInstructions() != null && recipe.getInstructions().toLowerCase(Locale.US).contains(queryLower)) {
+                            matches = true;
+                            Log.d(TAG, "Match found in instructions: " + recipe.getInstructions().substring(0, Math.min(50, recipe.getInstructions().length())) + "...");
+                        }
+
+                        if (query.isEmpty() || matches) {
                             filteredList.add(recipe);
+                            searchRecipeIds.add(recipe.getId());
                         }
                     }
                 }
-                searchRecipesList.addAll(filteredList);
-                lastDoc = task.getResult().getDocuments().isEmpty() ? null :
-                        task.getResult().getDocuments().get(task.getResult().size() - 1);
+                Log.d(TAG, "Fetched " + filteredList.size() + " recipes for query: " + query);
 
                 runOnUiThread(() -> {
-                    searchRecipesAdapter.updateList(searchRecipesList); // Use DiffUtil
+                    List<Recipe> updatedList = new ArrayList<>(searchRecipesList);
+                    updatedList.addAll(filteredList);
+                    searchRecipesList.clear();
+                    searchRecipesList.addAll(updatedList);
+                    searchRecipesAdapter.updateList(updatedList); // Use DiffUtil
                     searchRecipesAdapter.setLoading(false); // Hide loading indicator
+                    if (updatedList.isEmpty() && !query.isEmpty()) {
+                        noResultsCount++;
+                        if (noResultsCount < MAX_NO_RESULTS_PAGES) {
+                            Log.d(TAG, "No results in this page, fetching next page");
+                            isLoading = false; // Allow next fetch
+                            filterRecipes(query); // Fetch next page
+                        } else {
+                            Toast.makeText(SearchActivity.this, "No recipes found", Toast.LENGTH_SHORT).show();
+                            noResultsCount = 0; // Reset counter
+                        }
+                    } else {
+                        noResultsCount = 0; // Reset counter on successful results
+                    }
                 });
+            } else {
+                Log.e(TAG, "Query failed", task.getException());
+                runOnUiThread(() -> {
+                    searchRecipesAdapter.setLoading(false);
+                    Toast.makeText(SearchActivity.this, "Failed to load recipes", Toast.LENGTH_SHORT).show();
+                });
+            }
+            if (!task.isSuccessful() || !task.getResult().isEmpty()) {
+                lastDoc = task.getResult().getDocuments().isEmpty() ? null :
+                        task.getResult().getDocuments().get(task.getResult().size() - 1);
             }
             isLoading = false;
         });
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        searchHandler.removeCallbacks(searchRunnable); // Clean up
     }
 }

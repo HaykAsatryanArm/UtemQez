@@ -47,7 +47,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent">
 
-                <!-- Horizontal layout for search bar and profile icon -->
+                <!-- Horizontal layout for search bar, search button, and profile icon -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -68,12 +68,24 @@
                         android:textColorHint="@color/grey"
                         android:textSize="16sp" />
 
+                    <!-- Search Button -->
+                    <ImageButton
+                        android:id="@+id/searchButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Search"
+                        android:padding="8dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/search" />
+
                     <!-- Profile Icon -->
                     <ImageButton
                         android:id="@+id/nav_profile"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
-                        android:layout_marginStart="16dp"
+                        android:layout_marginStart="8dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="Profile"
                         android:padding="8dp"
