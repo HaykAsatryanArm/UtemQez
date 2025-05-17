@@ -2,7 +2,9 @@ package com.haykasatryan.utemqez;
 
 import android.os.Bundle;
 import android.text.Html;
+import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -17,11 +19,18 @@ public class RecipeDetailActivity extends AppCompatActivity {
 
     private ImageView recipeImage;
     private TextView recipeTitle;
-    private TextView recipeCategory;
+    private TextView recipeDescription;
     private TextView readyInMinutes;
     private TextView ingredients;
     private TextView instructions;
-    private TextView nutrition;
+    private TextView caloriesText;
+    private TextView carbsText;
+    private TextView proteinText;
+    private TextView fatText;
+    private LinearLayout ingredientsContent;
+    private LinearLayout instructionsContent;
+    private TextView ingredientsHeader;
+    private TextView instructionsHeader;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,7 +38,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_recipe_detail);
 
-        // Use the root view (NestedScrollView) for window insets
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -39,28 +47,47 @@ public class RecipeDetailActivity extends AppCompatActivity {
         // Initialize views
         recipeImage = findViewById(R.id.detailRecipeImage);
         recipeTitle = findViewById(R.id.detailRecipeTitle);
-        recipeCategory = findViewById(R.id.detailRecipeCategory);
         readyInMinutes = findViewById(R.id.detailReadyInMinutes);
         ingredients = findViewById(R.id.detailIngredients);
         instructions = findViewById(R.id.detailInstructions);
-        nutrition = findViewById(R.id.detailNutrition);
+        caloriesText = findViewById(R.id.caloriesText);
+        carbsText = findViewById(R.id.carbsText);
+        proteinText = findViewById(R.id.proteinText);
+        fatText = findViewById(R.id.fatText);
+        ingredientsContent = findViewById(R.id.ingredientsContent);
+        instructionsContent = findViewById(R.id.instructionsContent);
+        ingredientsHeader = findViewById(R.id.ingredientsHeader);
+        instructionsHeader = findViewById(R.id.instructionsHeader);
 
         // Get recipe data from intent
         Recipe recipe = getIntent().getParcelableExtra("recipe");
         if (recipe != null) {
             // Set basic info
             recipeTitle.setText(recipe.getTitle());
-            recipeCategory.setText("Category: " + String.join(", ", recipe.getCategory()));
-            readyInMinutes.setText("Ready in: " + recipe.getReadyInMinutes() + " minutes");
+            readyInMinutes.setText(String.valueOf(recipe.getReadyInMinutes()) + " Min");
+
+            // Set nutrition info
+            if (recipe.getNutrition() != null) {
+                Nutrition nutr = recipe.getNutrition();
+                caloriesText.setText(nutr.getCalories() != null ? nutr.getCalories() : "N/A");
+                carbsText.setText(nutr.getCarbs() != null ? nutr.getCarbs() : "N/A");
+                proteinText.setText(nutr.getProtein() != null ? nutr.getProtein() : "N/A");
+                fatText.setText(nutr.getFat() != null ? nutr.getFat() : "N/A");
+            } else {
+                caloriesText.setText("N/A");
+                carbsText.setText("N/A");
+                proteinText.setText("N/A");
+                fatText.setText("N/A");
+            }
 
             // Format and set ingredients
-            StringBuilder ingredientsText = new StringBuilder("<b>Ingredients:</b><br>");
+            StringBuilder ingredientsText = new StringBuilder();
             for (Ingredient ingredient : recipe.getIngredients()) {
                 ingredientsText.append("• ")
                         .append(ingredient.getAmount())
                         .append(" ")
                         .append(ingredient.getName())
-                        .append("<br>");
+                        .append("\n");
             }
             ingredients.setText(Html.fromHtml(ingredientsText.toString(), Html.FROM_HTML_MODE_LEGACY));
 
@@ -68,22 +95,9 @@ public class RecipeDetailActivity extends AppCompatActivity {
             String instructionsText = recipe.getInstructions() != null && !recipe.getInstructions().isEmpty()
                     ? recipe.getInstructions()
                     : "No instructions available";
-            instructions.setText(Html.fromHtml("<b>Instructions:</b><br>" + instructionsText, Html.FROM_HTML_MODE_LEGACY));
+            instructions.setText(Html.fromHtml(instructionsText, Html.FROM_HTML_MODE_LEGACY));
 
-            // Set nutrition with null check
-            if (recipe.getNutrition() != null) {
-                Nutrition nutr = recipe.getNutrition();
-                String nutritionText = "<b>Nutrition:</b><br>" +
-                        "Calories: " + (nutr.getCalories() != null ? nutr.getCalories() : "N/A") + "<br>" +
-                        "Protein: " + (nutr.getProtein() != null ? nutr.getProtein() : "N/A") + "<br>" +
-                        "Fat: " + (nutr.getFat() != null ? nutr.getFat() : "N/A") + "<br>" +
-                        "Carbs: " + (nutr.getCarbs() != null ? nutr.getCarbs() : "N/A");
-                nutrition.setText(Html.fromHtml(nutritionText, Html.FROM_HTML_MODE_LEGACY));
-            } else {
-                nutrition.setText(Html.fromHtml("<b>Nutrition:</b><br>Not available", Html.FROM_HTML_MODE_LEGACY));
-            }
-
-            // Load image with placeholder and error handling
+            // Load image
             if (recipe.getImageUrl() != null && !recipe.getImageUrl().isEmpty()) {
                 Picasso.get()
                         .load(recipe.getImageUrl().replace("http://", "https://"))
@@ -92,14 +106,30 @@ public class RecipeDetailActivity extends AppCompatActivity {
                         .into(recipeImage);
             }
         } else {
-            // Handle case where no recipe is passed
             recipeTitle.setText("Error: No recipe data");
-            recipeCategory.setVisibility(TextView.GONE);
+            recipeDescription.setVisibility(TextView.GONE);
             readyInMinutes.setVisibility(TextView.GONE);
             ingredients.setVisibility(TextView.GONE);
             instructions.setVisibility(TextView.GONE);
-            nutrition.setVisibility(TextView.GONE);
+            caloriesText.setVisibility(TextView.GONE);
+            carbsText.setVisibility(TextView.GONE);
+            proteinText.setVisibility(TextView.GONE);
+            fatText.setVisibility(TextView.GONE);
             recipeImage.setImageResource(R.drawable.profile_background);
+        }
+    }
+
+    public void toggleContent(View view) {
+        if (view.getId() == R.id.ingredientsHeader) {
+            ingredientsContent.setVisibility(View.VISIBLE);
+            instructionsContent.setVisibility(View.GONE);
+            ingredientsHeader.setBackgroundColor(getResources().getColor(android.R.color.holo_green_dark));
+            instructionsHeader.setBackgroundColor(getResources().getColor(android.R.color.darker_gray));
+        } else if (view.getId() == R.id.instructionsHeader) {
+            ingredientsContent.setVisibility(View.GONE);
+            instructionsContent.setVisibility(View.VISIBLE);
+            ingredientsHeader.setBackgroundColor(getResources().getColor(android.R.color.darker_gray));
+            instructionsHeader.setBackgroundColor(getResources().getColor(android.R.color.holo_green_dark));
         }
     }
 }

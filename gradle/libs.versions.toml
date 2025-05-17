@@ -10,6 +10,7 @@ comGoogleFirebaseFirebaseFirestore = "latest_version"
 compiler = "4.16.0"
 constraintlayoutVersion = "2.1.3"
 espressoCoreVersion = "3.4.0"
+expandableLayout = "1.6.0"
 firebaseAuthVersion = "22.0.0"
 firebaseFirestoreVersion = "24.10.0"
 firebaseStorage = "21.0.1"
@@ -55,6 +56,7 @@ compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "compi
 constraintlayout-v213 = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayoutVersion" }
 constraintlayout-vlatestversion = { module = "androidx.constraintlayout:constraintlayout", version.ref = "androidxConstraintlayout" }
 espresso-core-v340 = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCoreVersion" }
+expandable-layout = { module = "com.github.aakira:expandable-layout", version.ref = "expandableLayout" }
 firebase-auth-v2101 = { module = "com.google.firebase:firebase-auth", version.ref = "googleFirebaseAuthVersion" }
 firebase-auth-v2110 = { module = "com.google.firebase:firebase-auth", version.ref = "googleFirebaseAuth" }
 firebase-auth-v2200 = { module = "com.google.firebase:firebase-auth", version.ref = "firebaseAuthVersion" }
