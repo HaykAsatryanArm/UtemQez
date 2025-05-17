@@ -6,6 +6,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -138,8 +139,11 @@ public class HomeActivity extends AppCompatActivity {
         // Bottom navigation click listeners
         findViewById(R.id.nav_home).setOnClickListener(v -> {});
         findViewById(R.id.nav_search).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, SearchActivity.class)));
-        findViewById(R.id.nav_ai).setOnClickListener(v -> {});
-        findViewById(R.id.nav_liked).setOnClickListener(v -> {});
+        findViewById(R.id.nav_ai).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, ChatActivity.class)));
+        findViewById(R.id.nav_liked).setOnClickListener(v -> {
+            // Handle liked recipes navigation if implemented
+            Toast.makeText(this, "Liked recipes not implemented", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void setCategoryButtonListeners() {
@@ -162,7 +166,7 @@ public class HomeActivity extends AppCompatActivity {
             categoryRecipeIds.clear();
             List<Recipe> oldList = new ArrayList<>(categoryRecipeList);
             categoryRecipeList.clear();
-            categoryRecipeAdapter.updateList(new ArrayList<>()); // Notify adapter of cleared list
+            categoryRecipeAdapter.updateList(new ArrayList<>());
             fetchRecipesByCategory(category);
         }
     }
@@ -170,7 +174,7 @@ public class HomeActivity extends AppCompatActivity {
     private void fetchRecipesByCategory(String selectedCategory) {
         if (isLoadingCategory) return;
         isLoadingCategory = true;
-        categoryRecipeAdapter.setLoading(true); // Show loading indicator
+        categoryRecipeAdapter.setLoading(true);
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         Query query = db.collection("recipes")
@@ -186,7 +190,7 @@ public class HomeActivity extends AppCompatActivity {
                 List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     Recipe recipe = document.toObject(Recipe.class);
-                    if (!categoryRecipeIds.contains(recipe.getId())) { // Avoid duplicates
+                    if (!categoryRecipeIds.contains(recipe.getId())) {
                         newRecipes.add(recipe);
                         categoryRecipeIds.add(recipe.getId());
                     }
@@ -199,11 +203,10 @@ public class HomeActivity extends AppCompatActivity {
                     updatedList.addAll(newRecipes);
                     categoryRecipeList.clear();
                     categoryRecipeList.addAll(updatedList);
-                    categoryRecipeAdapter.updateList(updatedList); // Use DiffUtil
-                    categoryRecipeAdapter.setLoading(false); // Hide loading indicator
+                    categoryRecipeAdapter.updateList(updatedList);
+                    categoryRecipeAdapter.setLoading(false);
                 });
             } else {
-                // Handle error (e.g., log or show toast)
                 runOnUiThread(() -> categoryRecipeAdapter.setLoading(false));
             }
             isLoadingCategory = false;
@@ -213,11 +216,11 @@ public class HomeActivity extends AppCompatActivity {
     private void fetchAllRecipes() {
         if (isLoadingAllRecipes) return;
         isLoadingAllRecipes = true;
-        allRecipesAdapter.setLoading(true); // Show loading indicator
+        allRecipesAdapter.setLoading(true);
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         Query query = db.collection("recipes")
-                .orderBy("id") // Ensure consistent ordering
+                .orderBy("id")
                 .limit(PAGE_SIZE);
 
         if (lastAllRecipesDoc != null) {
@@ -229,7 +232,7 @@ public class HomeActivity extends AppCompatActivity {
                 List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     Recipe recipe = document.toObject(Recipe.class);
-                    if (!allRecipeIds.contains(recipe.getId())) { // Avoid duplicates
+                    if (!allRecipeIds.contains(recipe.getId())) {
                         newRecipes.add(recipe);
                         allRecipeIds.add(recipe.getId());
                     }
@@ -242,11 +245,10 @@ public class HomeActivity extends AppCompatActivity {
                     updatedList.addAll(newRecipes);
                     allRecipesList.clear();
                     allRecipesList.addAll(updatedList);
-                    allRecipesAdapter.updateList(updatedList); // Use DiffUtil
-                    allRecipesAdapter.setLoading(false); // Hide loading indicator
+                    allRecipesAdapter.updateList(updatedList);
+                    allRecipesAdapter.setLoading(false);
                 });
             } else {
-                // Handle error (e.g., log or show toast)
                 runOnUiThread(() -> allRecipesAdapter.setLoading(false));
             }
             isLoadingAllRecipes = false;

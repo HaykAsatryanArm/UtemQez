@@ -56,7 +56,7 @@ public class GeminiPro {
         GenerationConfig generationConfig = configBuilder.build();
 
         GenerativeModel gm = new GenerativeModel(
-                "gemini-1.5-pro-002",
+                "gemini-2.0-flash",
                 apiKey,
                 generationConfig,
                 Collections.singletonList(harassmentSafety)
