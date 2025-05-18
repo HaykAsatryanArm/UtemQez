@@ -6,6 +6,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Button;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,6 +32,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
     private LinearLayout instructionsContent;
     private TextView ingredientsHeader;
     private TextView instructionsHeader;
+    private Button closeButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +60,10 @@ public class RecipeDetailActivity extends AppCompatActivity {
         instructionsContent = findViewById(R.id.instructionsContent);
         ingredientsHeader = findViewById(R.id.ingredientsHeader);
         instructionsHeader = findViewById(R.id.instructionsHeader);
+        closeButton = findViewById(R.id.closeButton);
+
+        // Set up close button click listener
+        closeButton.setOnClickListener(v -> finish());
 
         // Get recipe data from intent
         Recipe recipe = getIntent().getParcelableExtra("recipe");
