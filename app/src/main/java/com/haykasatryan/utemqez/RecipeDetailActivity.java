@@ -68,7 +68,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
         // Get recipe data from intent
         Recipe recipe = getIntent().getParcelableExtra("recipe");
         if (recipe != null) {
-            // Set basic info
             recipeTitle.setText(recipe.getTitle());
             readyInMinutes.setText(String.valueOf(recipe.getReadyInMinutes()) + " Min");
 
