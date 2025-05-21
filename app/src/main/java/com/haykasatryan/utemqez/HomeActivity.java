@@ -45,8 +45,6 @@ public class HomeActivity extends AppCompatActivity {
     private DocumentSnapshot lastAllRecipesDoc = null; // Last document for all recipes
     private boolean isLoadingCategory = false; // Prevent multiple simultaneous loads
     private boolean isLoadingAllRecipes = false;
-    private long lastScrollTime = 0;
-    private static final long DEBOUNCE_MS = 500; // Debounce interval for scroll
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,12 +124,8 @@ public class HomeActivity extends AppCompatActivity {
                 LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
                 int totalItemCount = layoutManager.getItemCount();
                 int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
-
-                long currentTime = System.currentTimeMillis();
-                if (!isLoadingAllRecipes && totalItemCount <= (lastVisibleItem + 3) &&
-                        (currentTime - lastScrollTime > DEBOUNCE_MS)) {
-                    lastScrollTime = currentTime;
-                    fetchAllRecipes(); // Load more recipes
+                if (!isLoadingAllRecipes && totalItemCount <= (lastVisibleItem + 5)) {
+                    fetchAllRecipes();
                 }
             }
         });
@@ -141,7 +135,6 @@ public class HomeActivity extends AppCompatActivity {
         findViewById(R.id.nav_search).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, SearchActivity.class)));
         findViewById(R.id.nav_ai).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, ChatActivity.class)));
         findViewById(R.id.nav_liked).setOnClickListener(v -> {
-            // Handle liked recipes navigation if implemented
             Toast.makeText(this, "Liked recipes not implemented", Toast.LENGTH_SHORT).show();
         });
     }
@@ -164,7 +157,6 @@ public class HomeActivity extends AppCompatActivity {
             activeButton = selectedButton;
             lastCategoryDoc = null;
             categoryRecipeIds.clear();
-            List<Recipe> oldList = new ArrayList<>(categoryRecipeList);
             categoryRecipeList.clear();
             categoryRecipeAdapter.updateList(new ArrayList<>());
             fetchRecipesByCategory(category);
@@ -205,9 +197,15 @@ public class HomeActivity extends AppCompatActivity {
                     categoryRecipeList.addAll(updatedList);
                     categoryRecipeAdapter.updateList(updatedList);
                     categoryRecipeAdapter.setLoading(false);
+                    if (newRecipes.isEmpty()) {
+                        Toast.makeText(HomeActivity.this, "No more " + selectedCategory + " recipes", Toast.LENGTH_SHORT).show();
+                    }
                 });
             } else {
-                runOnUiThread(() -> categoryRecipeAdapter.setLoading(false));
+                runOnUiThread(() -> {
+                    categoryRecipeAdapter.setLoading(false);
+                    Toast.makeText(HomeActivity.this, "Error loading " + selectedCategory + " recipes", Toast.LENGTH_SHORT).show();
+                });
             }
             isLoadingCategory = false;
         });
@@ -219,10 +217,7 @@ public class HomeActivity extends AppCompatActivity {
         allRecipesAdapter.setLoading(true);
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        Query query = db.collection("recipes")
-                .orderBy("id")
-                .limit(PAGE_SIZE);
-
+        Query query = db.collection("recipes").limit(PAGE_SIZE);
         if (lastAllRecipesDoc != null) {
             query = query.startAfter(lastAllRecipesDoc);
         }
@@ -247,9 +242,15 @@ public class HomeActivity extends AppCompatActivity {
                     allRecipesList.addAll(updatedList);
                     allRecipesAdapter.updateList(updatedList);
                     allRecipesAdapter.setLoading(false);
+                    if (newRecipes.isEmpty()) {
+                        Toast.makeText(HomeActivity.this, "No more recipes to load", Toast.LENGTH_SHORT).show();
+                    }
                 });
             } else {
-                runOnUiThread(() -> allRecipesAdapter.setLoading(false));
+                runOnUiThread(() -> {
+                    allRecipesAdapter.setLoading(false);
+                    Toast.makeText(HomeActivity.this, "Error loading recipes", Toast.LENGTH_SHORT).show();
+                });
             }
             isLoadingAllRecipes = false;
         });
