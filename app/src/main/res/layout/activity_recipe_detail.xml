@@ -273,6 +273,16 @@
                         android:background="@android:color/white"
                         android:visibility="gone">
 
+                        <Button
+                            android:id="@+id/voiceButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Read Instructions Aloud"
+                            android:textSize="16sp"
+                            android:backgroundTint="@android:color/holo_green_dark"
+                            android:layout_marginBottom="8dp"
+                            android:contentDescription="Read instructions aloud"/>
+
                         <TextView
                             android:id="@+id/detailInstructions"
                             android:layout_width="match_parent"

@@ -1,12 +1,16 @@
 package com.haykasatryan.utemqez;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Html;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Button;
+import android.speech.tts.TextToSpeech;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,6 +19,8 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.squareup.picasso.Picasso;
+
+import java.util.Locale;
 
 public class RecipeDetailActivity extends AppCompatActivity {
 
@@ -33,6 +39,8 @@ public class RecipeDetailActivity extends AppCompatActivity {
     private TextView ingredientsHeader;
     private TextView instructionsHeader;
     private Button closeButton;
+    private Button voiceButton;
+    private TextToSpeech textToSpeech;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,9 +69,47 @@ public class RecipeDetailActivity extends AppCompatActivity {
         ingredientsHeader = findViewById(R.id.ingredientsHeader);
         instructionsHeader = findViewById(R.id.instructionsHeader);
         closeButton = findViewById(R.id.closeButton);
+        voiceButton = findViewById(R.id.voiceButton);
 
-        // Set up close button click listener
-        closeButton.setOnClickListener(v -> finish());
+        // Initialize TextToSpeech
+        textToSpeech = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                int result = textToSpeech.setLanguage(Locale.US);
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    voiceButton.setEnabled(false);
+                    Log.e("TextToSpeech", "Language not supported or missing data");
+                    Toast.makeText(this, "Text-to-speech language not available", Toast.LENGTH_SHORT).show();
+                } else {
+                    voiceButton.setEnabled(true);
+                    Log.d("TextToSpeech", "Initialization and language set successfully");
+                }
+            } else {
+                voiceButton.setEnabled(false);
+                Log.e("TextToSpeech", "Initialization failed with status: " + status);
+                Toast.makeText(this, "Text-to-speech initialization failed", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Set up close button click listener to navigate to HomeActivity
+        closeButton.setOnClickListener(v -> {
+            Intent intent = new Intent(RecipeDetailActivity.this, HomeActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent);
+            finish();
+        });
+
+        // Set up voice button click listener
+        voiceButton.setOnClickListener(v -> {
+            String text = Html.fromHtml(instructions.getText().toString(), Html.FROM_HTML_MODE_LEGACY).toString();
+            if (textToSpeech != null && !textToSpeech.isSpeaking()) {
+                textToSpeech.setSpeechRate(0.9f);
+                textToSpeech.setPitch(1.0f);
+                textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "recipe_instructions");
+                Log.d("TextToSpeech", "Speaking: " + text);
+            } else {
+                Log.d("TextToSpeech", "TextToSpeech is null or already speaking");
+            }
+        });
 
         // Get recipe data from intent
         Recipe recipe = getIntent().getParcelableExtra("recipe");
@@ -112,15 +158,16 @@ public class RecipeDetailActivity extends AppCompatActivity {
             }
         } else {
             recipeTitle.setText("Error: No recipe data");
-            recipeDescription.setVisibility(TextView.GONE);
-            readyInMinutes.setVisibility(TextView.GONE);
-            ingredients.setVisibility(TextView.GONE);
-            instructions.setVisibility(TextView.GONE);
-            caloriesText.setVisibility(TextView.GONE);
-            carbsText.setVisibility(TextView.GONE);
-            proteinText.setVisibility(TextView.GONE);
-            fatText.setVisibility(TextView.GONE);
+            recipeDescription.setVisibility(View.GONE);
+            readyInMinutes.setVisibility(View.GONE);
+            ingredients.setVisibility(View.GONE);
+            instructions.setVisibility(View.GONE);
+            caloriesText.setVisibility(View.GONE);
+            carbsText.setVisibility(View.GONE);
+            proteinText.setVisibility(View.GONE);
+            fatText.setVisibility(View.GONE);
             recipeImage.setImageResource(R.drawable.profile_background);
+            voiceButton.setVisibility(View.GONE);
         }
     }
 
@@ -135,6 +182,15 @@ public class RecipeDetailActivity extends AppCompatActivity {
             instructionsContent.setVisibility(View.VISIBLE);
             ingredientsHeader.setBackgroundColor(getResources().getColor(android.R.color.darker_gray));
             instructionsHeader.setBackgroundColor(getResources().getColor(android.R.color.holo_green_dark));
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
         }
     }
 }

@@ -10,7 +10,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.Button;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -35,6 +35,7 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
     private RecyclerView chatRecyclerView;
     private EditText messageInput;
     private ImageButton sendButton;
+    private Button closeButton;
     private ChatMessageAdapter chatAdapter;
     private final List<ChatMessage> messageList = new ArrayList<>();
     private ChatFutures chatModel;
@@ -57,6 +58,7 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
         // Initialize views
         TextView headerTitle = findViewById(R.id.header_title);
         ImageButton profileButton = findViewById(R.id.nav_profile);
+        closeButton = findViewById(R.id.closeButton);
         chatRecyclerView = findViewById(R.id.chatRecyclerView);
         messageInput = findViewById(R.id.messageInput);
         sendButton = findViewById(R.id.sendButton);
@@ -90,6 +92,14 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
             }
         });
 
+        // Close button click listener to navigate to HomeActivity
+        closeButton.setOnClickListener(v -> {
+            Intent intent = new Intent(ChatActivity.this, HomeActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent);
+            finish();
+        });
+
         // Send button click listener
         sendButton.setOnClickListener(v -> {
             String message = messageInput.getText().toString().trim();
@@ -100,20 +110,6 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
                 messageInput.setText("");
                 GeminiPro.getResponse(chatModel, message, this);
             }
-        });
-
-        // Bottom navigation click listeners
-        findViewById(R.id.nav_home).setOnClickListener(v -> {
-            startActivity(new Intent(ChatActivity.this, HomeActivity.class));
-            finish();
-        });
-        findViewById(R.id.nav_search).setOnClickListener(v -> {
-            startActivity(new Intent(ChatActivity.this, SearchActivity.class));
-            finish();
-        });
-        findViewById(R.id.nav_ai).setOnClickListener(v -> {});
-        findViewById(R.id.nav_liked).setOnClickListener(v -> {
-            Toast.makeText(this, "Liked recipes not implemented", Toast.LENGTH_SHORT).show();
         });
     }
 
