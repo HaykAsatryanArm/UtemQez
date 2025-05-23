@@ -153,7 +153,7 @@ public class SearchActivity extends AppCompatActivity {
                         boolean matches = query.isEmpty() || matchesQuery(recipe, queryVariations);
                         if (!searchRecipeIds.contains(recipe.getId()) && matches) {
                             newRecipes.add(recipe);
-                            searchRecipeIds.add(recipe.getId());
+                            searchRecipeIds.add(Long.valueOf(recipe.getId()));
                         }
                     } catch (Exception e) {
                         // Skip invalid documents

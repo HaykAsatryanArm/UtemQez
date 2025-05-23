@@ -16,7 +16,8 @@ public class Recipe implements Parcelable {
     private Nutrition nutrition;
     private String imageUrl;
     private List<String> category;
-    private String userId; // Added for Firestore
+    private String userId; // For Firestore document ID
+    private int likes; // Added for like functionality
 
     public Recipe() {}
 
@@ -33,6 +34,7 @@ public class Recipe implements Parcelable {
         category = new ArrayList<>();
         in.readStringList(category);
         userId = in.readString();
+        likes = in.readInt();
     }
 
     public static final Creator<Recipe> CREATOR = new Creator<Recipe>() {
@@ -64,10 +66,11 @@ public class Recipe implements Parcelable {
         dest.writeString(imageUrl);
         dest.writeStringList(category);
         dest.writeString(userId);
+        dest.writeInt(likes);
     }
 
     // Getters
-    public long getId() { return id; }
+    public int getId() { return id; }
     public String getTitle() { return title; }
     public int getReadyInMinutes() { return readyInMinutes; }
     public String getSourceUrl() { return sourceUrl; }
@@ -77,6 +80,7 @@ public class Recipe implements Parcelable {
     public String getImageUrl() { return imageUrl; }
     public List<String> getCategory() { return category; }
     public String getUserId() { return userId; }
+    public int getLikes() { return likes; }
 
     // Setters
     public void setId(int id) { this.id = id; }
@@ -89,6 +93,7 @@ public class Recipe implements Parcelable {
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public void setCategory(List<String> category) { this.category = category; }
     public void setUserId(String userId) { this.userId = userId; }
+    public void setLikes(int likes) { this.likes = likes; }
 }
 
 class Ingredient implements Parcelable {

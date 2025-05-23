@@ -2,6 +2,7 @@ package com.haykasatryan.utemqez;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -19,13 +20,18 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class HomeActivity extends AppCompatActivity {
@@ -36,8 +42,8 @@ public class HomeActivity extends AppCompatActivity {
     private RecipeAdapter categoryRecipeAdapter, allRecipesAdapter;
     private final List<Recipe> categoryRecipeList = new ArrayList<>();
     private final List<Recipe> allRecipesList = new ArrayList<>();
-    private final Set<Long> categoryRecipeIds = new HashSet<>();
-    private final Set<Long> allRecipeIds = new HashSet<>();
+    private final Set<Integer> categoryRecipeIds = new HashSet<>();
+    private final Set<Integer> allRecipeIds = new HashSet<>();
     private Button buttonBreakfast, buttonSalads, buttonDinner, buttonSnacks;
     private Button activeButton;
     private static final int PAGE_SIZE = 10; // Number of recipes to load per page
@@ -51,7 +57,6 @@ public class HomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_home);
-
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -60,13 +65,34 @@ public class HomeActivity extends AppCompatActivity {
 
         // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // Initialize likedRecipes for the user
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user != null) {
+            DocumentReference userRef = db.collection("users").document(user.getUid());
+            userRef.get().addOnSuccessListener(documentSnapshot -> {
+                if (!documentSnapshot.exists()) {
+                    // Create user document with empty likedRecipes array
+                    Map<String, Object> userData = new HashMap<>();
+                    userData.put("likedRecipes", new ArrayList<String>());
+                    userRef.set(userData)
+                            .addOnSuccessListener(aVoid -> Log.d("Firestore", "User document created"))
+                            .addOnFailureListener(e -> Log.w("Firestore", "Error creating user document", e));
+                } else if (documentSnapshot.get("likedRecipes") == null) {
+                    // Initialize likedRecipes if it doesn't exist
+                    userRef.update("likedRecipes", new ArrayList<String>())
+                            .addOnSuccessListener(aVoid -> Log.d("Firestore", "likedRecipes initialized"))
+                            .addOnFailureListener(e -> Log.w("Firestore", "Error initializing likedRecipes", e));
+                }
+            });
+        }
 
         // Find views
         welcomeText = findViewById(R.id.header_title);
         ImageButton profileButton = findViewById(R.id.nav_profile);
 
         // Set up authentication-based UI
-        FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             String userName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
             welcomeText.setText("Welcome, " + userName + "!");
@@ -135,7 +161,12 @@ public class HomeActivity extends AppCompatActivity {
         findViewById(R.id.nav_search).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, SearchActivity.class)));
         findViewById(R.id.nav_ai).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, ChatActivity.class)));
         findViewById(R.id.nav_liked).setOnClickListener(v -> {
-            Toast.makeText(this, "Liked recipes not implemented", Toast.LENGTH_SHORT).show();
+            if (mAuth.getCurrentUser() == null) {
+                startActivity(new Intent(HomeActivity.this, LoginActivity.class));
+                Toast.makeText(this, "Please log in to view liked recipes", Toast.LENGTH_SHORT).show();
+            } else {
+                startActivity(new Intent(HomeActivity.this, LikedRecipesActivity.class));
+            }
         });
     }
 
@@ -182,6 +213,7 @@ public class HomeActivity extends AppCompatActivity {
                 List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     Recipe recipe = document.toObject(Recipe.class);
+                    recipe.setUserId(document.getId());
                     if (!categoryRecipeIds.contains(recipe.getId())) {
                         newRecipes.add(recipe);
                         categoryRecipeIds.add(recipe.getId());
@@ -227,6 +259,7 @@ public class HomeActivity extends AppCompatActivity {
                 List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     Recipe recipe = document.toObject(Recipe.class);
+                    recipe.setUserId(document.getId());
                     if (!allRecipeIds.contains(recipe.getId())) {
                         newRecipes.add(recipe);
                         allRecipeIds.add(recipe.getId());
