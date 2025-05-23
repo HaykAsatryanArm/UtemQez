@@ -69,6 +69,17 @@ public class LikedRecipesActivity extends AppCompatActivity {
             Log.w("LikedRecipesActivity", "Profile button not found in layout");
         }
 
+        // Close button click listener
+        View closeButton = findViewById(R.id.nav_close);
+        if (closeButton != null) {
+            closeButton.setOnClickListener(v -> {
+                startActivity(new Intent(LikedRecipesActivity.this, HomeActivity.class));
+                finish();
+            });
+        } else {
+            Log.w("LikedRecipesActivity", "Close button not found in layout");
+        }
+
         fetchLikedRecipes();
     }
 
@@ -106,7 +117,7 @@ public class LikedRecipesActivity extends AppCompatActivity {
                                             }
                                         }
                                         Log.d("LikedRecipesActivity", "Recipes added: " + likedRecipesList.size());
-                                        likedRecipesAdapter.notifyDataSetChanged(); // Match older version
+                                        likedRecipesAdapter.notifyDataSetChanged();
                                         if (likedRecipesList.isEmpty()) {
                                             Toast.makeText(this, "No liked recipes found", Toast.LENGTH_SHORT).show();
                                         }
