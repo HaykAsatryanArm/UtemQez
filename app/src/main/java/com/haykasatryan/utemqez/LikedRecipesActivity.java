@@ -1,11 +1,19 @@
 package com.haykasatryan.utemqez;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import java.util.ArrayList;
@@ -21,54 +29,106 @@ public class LikedRecipesActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_liked_recipes);
 
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+
         mAuth = FirebaseAuth.getInstance();
+
+        // Initialize views
         likedRecipesRecyclerView = findViewById(R.id.likedRecipesRecyclerView);
         if (likedRecipesRecyclerView == null) {
-            Toast.makeText(this, "RecyclerView not found in layout", Toast.LENGTH_LONG).show();
+            Log.e("LikedRecipesActivity", "RecyclerView not found in layout");
+            Toast.makeText(this, "Error: RecyclerView not found", Toast.LENGTH_LONG).show();
+            finish();
             return;
         }
+
+        // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         likedRecipesRecyclerView.setLayoutManager(layoutManager);
         likedRecipesAdapter = new RecipeAdapter(likedRecipesList, R.layout.recipe_item_search);
         likedRecipesRecyclerView.setAdapter(likedRecipesAdapter);
 
+        // Profile button click listener
+        View profileButton = findViewById(R.id.nav_profile);
+        if (profileButton != null) {
+            profileButton.setOnClickListener(v -> {
+                if (mAuth.getCurrentUser() == null) {
+                    startActivity(new Intent(LikedRecipesActivity.this, LoginActivity.class));
+                } else {
+                    startActivity(new Intent(LikedRecipesActivity.this, ProfileActivity.class));
+                }
+            });
+        } else {
+            Log.w("LikedRecipesActivity", "Profile button not found in layout");
+        }
+
         fetchLikedRecipes();
     }
 
     private void fetchLikedRecipes() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "Please log in to view liked recipes", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
+
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        String userId = mAuth.getCurrentUser().getUid();
+        String userId = user.getUid();
         db.collection("users").document(userId).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     List<String> likedRecipeIds = (List<String>) documentSnapshot.get("likedRecipes");
+                    Log.d("LikedRecipesActivity", "Liked Recipe IDs: " + likedRecipeIds);
                     if (likedRecipeIds != null && !likedRecipeIds.isEmpty()) {
                         db.collection("recipes").get()
                                 .addOnCompleteListener(task -> {
                                     if (task.isSuccessful()) {
                                         likedRecipesList.clear();
                                         for (QueryDocumentSnapshot document : task.getResult()) {
-                                            Recipe recipe = document.toObject(Recipe.class);
-                                            recipe.setUserId(document.getId());
-                                            if (likedRecipeIds.contains(String.valueOf(recipe.getId()))) {
-                                                likedRecipesList.add(recipe);
+                                            try {
+                                                Recipe recipe = document.toObject(Recipe.class);
+                                                recipe.setUserId(document.getId());
+                                                String recipeId = String.valueOf(recipe.getId());
+                                                Log.d("LikedRecipesActivity", "Recipe ID: " + recipeId + ", Title: " + recipe.getTitle());
+                                                if (likedRecipeIds.contains(recipeId)) {
+                                                    likedRecipesList.add(recipe);
+                                                }
+                                            } catch (Exception e) {
+                                                Log.e("LikedRecipesActivity", "Error deserializing recipe: " + document.getId(), e);
                                             }
                                         }
-                                        likedRecipesAdapter.notifyDataSetChanged(); // Safer than updateList
+                                        Log.d("LikedRecipesActivity", "Recipes added: " + likedRecipesList.size());
+                                        likedRecipesAdapter.notifyDataSetChanged(); // Match older version
                                         if (likedRecipesList.isEmpty()) {
                                             Toast.makeText(this, "No liked recipes found", Toast.LENGTH_SHORT).show();
                                         }
                                     } else {
                                         Toast.makeText(this, "Error loading liked recipes", Toast.LENGTH_SHORT).show();
+                                        Log.e("LikedRecipesActivity", "Firestore error", task.getException());
                                     }
+                                })
+                                .addOnFailureListener(e -> {
+                                    Toast.makeText(this, "Error loading recipes", Toast.LENGTH_SHORT).show();
+                                    Log.e("LikedRecipesActivity", "Firestore query failed", e);
+                                    likedRecipesAdapter.notifyDataSetChanged();
                                 });
                     } else {
                         Toast.makeText(this, "No liked recipes found", Toast.LENGTH_SHORT).show();
+                        likedRecipesAdapter.notifyDataSetChanged();
                     }
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Error fetching user data", Toast.LENGTH_SHORT).show();
+                    Log.e("LikedRecipesActivity", "Error fetching user data", e);
+                    likedRecipesAdapter.notifyDataSetChanged();
                 });
     }
 }

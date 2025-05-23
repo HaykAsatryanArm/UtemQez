@@ -35,6 +35,7 @@
         <activity android:name=".RecipeDetailActivity" />
         <activity android:name=".SearchActivity" />
         <activity android:name=".ChatActivity"/>
+        <activity android:name=".LikedRecipesActivity" />
     </application>
 
 </manifest>
