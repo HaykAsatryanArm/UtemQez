@@ -18,8 +18,8 @@
 
         <ImageView
             android:id="@+id/recipeImage"
-            android:layout_width="120dp"
-            android:layout_height="100dp"
+            android:layout_width="130dp"
+            android:layout_height="130dp"
             android:scaleType="centerCrop"
             android:clipToOutline="true"
             android:outlineProvider="background"
@@ -49,7 +49,7 @@
                 android:ellipsize="end"
                 android:paddingTop="4dp"
                 android:paddingEnd="8dp"
-                android:text="Recipe Title"
+                android:text="Recipe Titledadadadadadadadadadadadadsasadasdasdas"
                 tools:ignore="HardcodedText,RtlSymmetry" />
 
             <LinearLayout
@@ -57,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginTop="4dp">
+                android:layout_marginVertical="4dp">
 
                 <ImageButton
                     android:id="@+id/likeButton"
