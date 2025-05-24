@@ -25,11 +25,13 @@ import com.google.firebase.auth.FirebaseUser;
 
 public class LoginActivity extends AppCompatActivity {
 
-    Button loginBtn;
+    Button loginBtn, guestBtn;
     TextView toRegLink, reset, skip;
     EditText userEmail, userPassword;
     FirebaseAuth mAuth;
     private boolean isPasswordVisible = false;
+    private static final String GUEST_EMAIL = "individualproject2025@gmail.com";
+    private static final String GUEST_PASSWORD = "Samsung2025";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +47,7 @@ public class LoginActivity extends AppCompatActivity {
         userEmail = findViewById(R.id.email);
         userPassword = findViewById(R.id.password);
         loginBtn = findViewById(R.id.loginBtn);
+        guestBtn = findViewById(R.id.guestBtn);
         toRegLink = findViewById(R.id.toReg);
         reset = findViewById(R.id.forgot);
         skip = findViewById(R.id.skip);
@@ -55,51 +58,42 @@ public class LoginActivity extends AppCompatActivity {
         skip.setOnClickListener(v -> startActivity(new Intent(LoginActivity.this, HomeActivity.class)));
 
         reset.setOnClickListener(v -> {
-            String email= userEmail.getText().toString().trim();
-            FirebaseAuth auth = FirebaseAuth.getInstance();
-            if(email.isEmpty())
-            {
+            String email = userEmail.getText().toString().trim();
+            if (email.isEmpty()) {
                 userEmail.setError("Write your email");
                 userEmail.requestFocus();
                 return;
             }
-            auth.sendPasswordResetEmail(email)
-                    .addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-                            if (task.isSuccessful()) {
-                                Toast.makeText(getApplicationContext(), "Check Your Email", Toast.LENGTH_SHORT).show();
-                            } else {
-                                Toast.makeText(LoginActivity.this, task.getException().getMessage(), Toast.LENGTH_SHORT).show();
-                            }
+            mAuth.sendPasswordResetEmail(email)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(getApplicationContext(), "Check Your Email", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(LoginActivity.this, task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
         });
 
         loginBtn.setOnClickListener(v -> {
-            String email= userEmail.getText().toString().trim();
-            String password=userPassword.getText().toString().trim();
-            if(email.isEmpty())
-            {
-                userPassword.setError("Email is empty");
-                userPassword.requestFocus();
-                return;
-            }
-            if(!Patterns.EMAIL_ADDRESS.matcher(email).matches())
-            {
-                userEmail.setError("Enter the valid email");
+            String email = userEmail.getText().toString().trim();
+            String password = userPassword.getText().toString().trim();
+            if (email.isEmpty()) {
+                userEmail.setError("Email is empty");
                 userEmail.requestFocus();
                 return;
             }
-            if(password.isEmpty())
-            {
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                userEmail.setError("Enter a valid email");
+                userEmail.requestFocus();
+                return;
+            }
+            if (password.isEmpty()) {
                 userPassword.setError("Password is empty");
                 userPassword.requestFocus();
                 return;
             }
-            if(password.length()<6)
-            {
-                userPassword.setError("Length of password is more than 6");
+            if (password.length() < 6) {
+                userPassword.setError("Password must be at least 6 characters");
                 userPassword.requestFocus();
                 return;
             }
@@ -124,6 +118,31 @@ public class LoginActivity extends AppCompatActivity {
                     });
         });
 
+        guestBtn.setOnClickListener(v -> {
+            mAuth.signInWithEmailAndPassword(GUEST_EMAIL, GUEST_PASSWORD)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            FirebaseUser user = mAuth.getCurrentUser();
+                            if (user != null && user.isEmailVerified()) {
+                                Log.d("LoginActivity", "Guest login successful");
+                                startActivity(new Intent(LoginActivity.this, HomeActivity.class));
+                                finish();
+                            } else {
+                                Log.w("LoginActivity", "Guest email not verified");
+                                Toast.makeText(LoginActivity.this,
+                                        "Guest account email not verified.",
+                                        Toast.LENGTH_LONG).show();
+                                FirebaseAuth.getInstance().signOut();
+                            }
+                        } else {
+                            Log.e("LoginActivity", "Guest login failed: " + task.getException().getMessage());
+                            Toast.makeText(LoginActivity.this,
+                                    "Guest login failed: " + task.getException().getMessage(),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        });
+
         setupPasswordToggle(userPassword, () -> {
             isPasswordVisible = !isPasswordVisible;
             if (isPasswordVisible) {
@@ -133,9 +152,8 @@ public class LoginActivity extends AppCompatActivity {
                 userPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
                 userPassword.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_eye, 0);
             }
-            userPassword.setSelection(userPassword.getText().length()); // Keep cursor at end
+            userPassword.setSelection(userPassword.getText().length());
         });
-
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -149,27 +167,5 @@ public class LoginActivity extends AppCompatActivity {
             }
             return false;
         });
-    }
-
-    private void checkIfEmailVerified()
-    {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-
-        assert user != null;
-        if (user.isEmailVerified())
-        {
-            // user is verified, so you can finish this activity or send user to activity which you want.
-            finish();
-            Toast.makeText(LoginActivity.this, "Successfully logged in", Toast.LENGTH_SHORT).show();
-        }
-        else
-        {
-            // email is not verified, so just prompt the message to the user and restart this activity.
-            // NOTE: don't forget to log out the user.
-            FirebaseAuth.getInstance().signOut();
-
-            //restart this activity
-
-        }
     }
 }
