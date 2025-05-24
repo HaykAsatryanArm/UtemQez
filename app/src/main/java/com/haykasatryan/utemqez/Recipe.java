@@ -18,6 +18,7 @@ public class Recipe implements Parcelable {
     private List<String> category;
     private String userId; // For Firestore document ID
     private int likes; // Added for like functionality
+    private boolean isApproved; // New field for approval status
 
     public Recipe() {}
 
@@ -35,6 +36,7 @@ public class Recipe implements Parcelable {
         in.readStringList(category);
         userId = in.readString();
         likes = in.readInt();
+        isApproved = in.readByte() != 0; // Read boolean
     }
 
     public static final Creator<Recipe> CREATOR = new Creator<Recipe>() {
@@ -67,6 +69,7 @@ public class Recipe implements Parcelable {
         dest.writeStringList(category);
         dest.writeString(userId);
         dest.writeInt(likes);
+        dest.writeByte((byte) (isApproved ? 1 : 0)); // Write boolean
     }
 
     // Getters
@@ -81,6 +84,7 @@ public class Recipe implements Parcelable {
     public List<String> getCategory() { return category; }
     public String getUserId() { return userId; }
     public int getLikes() { return likes; }
+    public boolean isApproved() { return isApproved; }
 
     // Setters
     public void setId(int id) { this.id = id; }
@@ -94,6 +98,7 @@ public class Recipe implements Parcelable {
     public void setCategory(List<String> category) { this.category = category; }
     public void setUserId(String userId) { this.userId = userId; }
     public void setLikes(int likes) { this.likes = likes; }
+    public void setApproved(boolean isApproved) { this.isApproved = isApproved; }
 }
 
 class Ingredient implements Parcelable {

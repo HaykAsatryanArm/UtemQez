@@ -2,6 +2,7 @@ package com.haykasatryan.utemqez;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -55,19 +56,16 @@ public class SearchActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        // Initialize views
         searchBar = findViewById(R.id.searchBar);
         searchButton = findViewById(R.id.searchButton);
         ImageButton profileButton = findViewById(R.id.nav_profile);
         searchRecipesRecyclerView = findViewById(R.id.searchRecipesRecyclerView);
 
-        // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         searchRecipesRecyclerView.setLayoutManager(layoutManager);
         searchRecipesAdapter = new RecipeAdapter(searchRecipesList, R.layout.recipe_item_search);
         searchRecipesRecyclerView.setAdapter(searchRecipesAdapter);
 
-        // Profile button click listener
         profileButton.setOnClickListener(v -> {
             if (mAuth.getCurrentUser() == null) {
                 startActivity(new Intent(SearchActivity.this, LoginActivity.class));
@@ -76,7 +74,6 @@ public class SearchActivity extends AppCompatActivity {
             }
         });
 
-        // Search button click listener with debounce
         searchButton.setOnClickListener(v -> {
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastSearchClickTime < DEBOUNCE_MS) {
@@ -84,7 +81,6 @@ public class SearchActivity extends AppCompatActivity {
             }
             lastSearchClickTime = currentTime;
             String query = searchBar.getText().toString().trim();
-            // Reset search state
             searchRecipesList.clear();
             searchRecipeIds.clear();
             lastSearchDoc = null;
@@ -92,7 +88,6 @@ public class SearchActivity extends AppCompatActivity {
             searchRecipes(query);
         });
 
-        // Bottom navigation click listeners
         findViewById(R.id.nav_home).setOnClickListener(v -> {
             startActivity(new Intent(SearchActivity.this, HomeActivity.class));
             finish();
@@ -103,10 +98,14 @@ public class SearchActivity extends AppCompatActivity {
             finish();
         });
         findViewById(R.id.nav_liked).setOnClickListener(v -> {
-            Toast.makeText(this, "Liked recipes not implemented", Toast.LENGTH_SHORT).show();
+            if (mAuth.getCurrentUser() == null) {
+                startActivity(new Intent(SearchActivity.this, LoginActivity.class));
+                Toast.makeText(this, "Please log in to view liked recipes", Toast.LENGTH_SHORT).show();
+            } else {
+                startActivity(new Intent(SearchActivity.this, LikedRecipesActivity.class));
+            }
         });
 
-        // Add scroll listener for searchRecipesRecyclerView
         searchRecipesRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -121,7 +120,6 @@ public class SearchActivity extends AppCompatActivity {
             }
         });
 
-        // Load all recipes initially
         searchRecipes("");
     }
 
@@ -131,13 +129,14 @@ public class SearchActivity extends AppCompatActivity {
         searchRecipesAdapter.setLoading(true);
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        Query firestoreQuery = db.collection("recipes").limit(PAGE_SIZE);
+        Query firestoreQuery = db.collection("recipes")
+                .whereEqualTo("isApproved", true) // Only approved recipes
+                .limit(PAGE_SIZE);
 
         if (lastSearchDoc != null) {
             firestoreQuery = firestoreQuery.startAfter(lastSearchDoc);
         }
 
-        // Normalize query for case-insensitive search
         String lowerQuery = query != null ? query.trim().toLowerCase() : "";
         List<String> queryVariations = lowerQuery.isEmpty() ? new ArrayList<>() : generateQueryVariations(lowerQuery);
 
@@ -151,12 +150,12 @@ public class SearchActivity extends AppCompatActivity {
                             continue;
                         }
                         boolean matches = query.isEmpty() || matchesQuery(recipe, queryVariations);
-                        if (!searchRecipeIds.contains(recipe.getId()) && matches) {
+                        if (!searchRecipeIds.contains((long) recipe.getId()) && matches) {
                             newRecipes.add(recipe);
-                            searchRecipeIds.add(Long.valueOf(recipe.getId()));
+                            searchRecipeIds.add((long) recipe.getId());
                         }
                     } catch (Exception e) {
-                        // Skip invalid documents
+                        Log.e("SearchActivity", "Error parsing recipe: " + document.getId(), e);
                     }
                 }
                 lastSearchDoc = task.getResult().getDocuments().isEmpty() ? null :
@@ -187,10 +186,10 @@ public class SearchActivity extends AppCompatActivity {
         List<String> variations = new ArrayList<>();
         if (query == null || query.isEmpty()) return variations;
         variations.add(query);
-        variations.add(query + "s"); // Plural form
+        variations.add(query + "s");
         if (query.length() > 1) {
-            variations.add(query.substring(0, 1).toUpperCase() + query.substring(1)); // Capitalized
-            variations.add(query.substring(0, 1).toUpperCase() + query.substring(1) + "s"); // Capitalized plural
+            variations.add(query.substring(0, 1).toUpperCase() + query.substring(1));
+            variations.add(query.substring(0, 1).toUpperCase() + query.substring(1) + "s");
         }
         return variations;
     }
@@ -200,13 +199,11 @@ public class SearchActivity extends AppCompatActivity {
             return false;
         }
 
-        // Check title
         String title = recipe.getTitle() != null ? recipe.getTitle().toLowerCase() : "";
         if (!title.isEmpty() && queryVariations.stream().anyMatch(title::contains)) {
             return true;
         }
 
-        // Check ingredients
         List<Ingredient> ingredients = recipe.getIngredients();
         if (ingredients != null) {
             for (Ingredient ingredient : ingredients) {
@@ -218,7 +215,6 @@ public class SearchActivity extends AppCompatActivity {
             }
         }
 
-        // Check instructions
         String instructions = recipe.getInstructions() != null ?
                 recipe.getInstructions().toLowerCase() : "";
         if (!instructions.isEmpty() && queryVariations.stream().anyMatch(instructions::contains)) {

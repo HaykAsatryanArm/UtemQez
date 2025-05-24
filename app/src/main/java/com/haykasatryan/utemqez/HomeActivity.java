@@ -20,12 +20,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,10 +44,10 @@ public class HomeActivity extends AppCompatActivity {
     private final Set<Integer> allRecipeIds = new HashSet<>();
     private Button buttonBreakfast, buttonSalads, buttonDinner, buttonSnacks;
     private Button activeButton;
-    private static final int PAGE_SIZE = 10; // Number of recipes to load per page
-    private DocumentSnapshot lastCategoryDoc = null; // Last document for category recipes
-    private DocumentSnapshot lastAllRecipesDoc = null; // Last document for all recipes
-    private boolean isLoadingCategory = false; // Prevent multiple simultaneous loads
+    private static final int PAGE_SIZE = 10;
+    private DocumentSnapshot lastCategoryDoc = null;
+    private DocumentSnapshot lastAllRecipesDoc = null;
+    private boolean isLoadingCategory = false;
     private boolean isLoadingAllRecipes = false;
 
     @Override
@@ -63,24 +61,20 @@ public class HomeActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        // Initialize likedRecipes for the user
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             DocumentReference userRef = db.collection("users").document(user.getUid());
             userRef.get().addOnSuccessListener(documentSnapshot -> {
                 if (!documentSnapshot.exists()) {
-                    // Create user document with empty likedRecipes array
                     Map<String, Object> userData = new HashMap<>();
                     userData.put("likedRecipes", new ArrayList<String>());
                     userRef.set(userData)
                             .addOnSuccessListener(aVoid -> Log.d("Firestore", "User document created"))
                             .addOnFailureListener(e -> Log.w("Firestore", "Error creating user document", e));
                 } else if (documentSnapshot.get("likedRecipes") == null) {
-                    // Initialize likedRecipes if it doesn't exist
                     userRef.update("likedRecipes", new ArrayList<String>())
                             .addOnSuccessListener(aVoid -> Log.d("Firestore", "likedRecipes initialized"))
                             .addOnFailureListener(e -> Log.w("Firestore", "Error initializing likedRecipes", e));
@@ -88,11 +82,9 @@ public class HomeActivity extends AppCompatActivity {
             });
         }
 
-        // Find views
         welcomeText = findViewById(R.id.header_title);
         ImageButton profileButton = findViewById(R.id.nav_profile);
 
-        // Set up authentication-based UI
         if (user != null) {
             String userName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
             welcomeText.setText("Welcome, " + userName + "!");
@@ -101,7 +93,6 @@ public class HomeActivity extends AppCompatActivity {
             welcomeText.setVisibility(View.GONE);
         }
 
-        // Profile button click listener
         profileButton.setOnClickListener(v -> {
             if (mAuth.getCurrentUser() == null) {
                 startActivity(new Intent(HomeActivity.this, LoginActivity.class));
@@ -110,27 +101,23 @@ public class HomeActivity extends AppCompatActivity {
             }
         });
 
-        // Initialize category RecyclerView
         recipeRecyclerView = findViewById(R.id.recipeRecyclerView);
         LinearLayoutManager categoryLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
         recipeRecyclerView.setLayoutManager(categoryLayoutManager);
         categoryRecipeAdapter = new RecipeAdapter(categoryRecipeList, R.layout.recipe_item_main);
         recipeRecyclerView.setAdapter(categoryRecipeAdapter);
 
-        // Initialize all recipes RecyclerView
         allRecipesRecyclerView = findViewById(R.id.allRecipesRecyclerView);
         LinearLayoutManager allRecipesLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         allRecipesRecyclerView.setLayoutManager(allRecipesLayoutManager);
         allRecipesAdapter = new RecipeAdapter(allRecipesList, R.layout.recipe_item_search);
         allRecipesRecyclerView.setAdapter(allRecipesAdapter);
 
-        // Category buttons
         buttonBreakfast = findViewById(R.id.buttonBreakfast);
         buttonSalads = findViewById(R.id.buttonSalads);
         buttonDinner = findViewById(R.id.buttonDinner);
         buttonSnacks = findViewById(R.id.buttonSnacks);
 
-        // Set initial active button
         activeButton = buttonBreakfast;
         buttonBreakfast.setSelected(true);
         buttonBreakfast.setTextColor(getResources().getColor(R.color.white));
@@ -142,7 +129,6 @@ public class HomeActivity extends AppCompatActivity {
         fetchRecipesByCategory("Breakfast");
         fetchAllRecipes();
 
-        // Add scroll listener for allRecipesRecyclerView
         allRecipesRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -156,7 +142,6 @@ public class HomeActivity extends AppCompatActivity {
             }
         });
 
-        // Bottom navigation click listeners
         findViewById(R.id.nav_home).setOnClickListener(v -> {});
         findViewById(R.id.nav_search).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, SearchActivity.class)));
         findViewById(R.id.nav_ai).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, ChatActivity.class)));
@@ -202,6 +187,7 @@ public class HomeActivity extends AppCompatActivity {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         Query query = db.collection("recipes")
                 .whereArrayContains("category", selectedCategory)
+                .whereEqualTo("isApproved", true) // Only approved recipes
                 .limit(PAGE_SIZE);
 
         if (lastCategoryDoc != null) {
@@ -213,10 +199,12 @@ public class HomeActivity extends AppCompatActivity {
                 List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     Recipe recipe = document.toObject(Recipe.class);
-                    recipe.setUserId(document.getId());
-                    if (!categoryRecipeIds.contains(recipe.getId())) {
-                        newRecipes.add(recipe);
-                        categoryRecipeIds.add(recipe.getId());
+                    if (recipe != null) {
+                        recipe.setUserId(document.getId());
+                        if (!categoryRecipeIds.contains(recipe.getId())) {
+                            newRecipes.add(recipe);
+                            categoryRecipeIds.add(recipe.getId());
+                        }
                     }
                 }
                 lastCategoryDoc = task.getResult().getDocuments().isEmpty() ? null :
@@ -249,7 +237,9 @@ public class HomeActivity extends AppCompatActivity {
         allRecipesAdapter.setLoading(true);
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        Query query = db.collection("recipes").limit(PAGE_SIZE);
+        Query query = db.collection("recipes")
+                .whereEqualTo("isApproved", true) // Only approved recipes
+                .limit(PAGE_SIZE);
         if (lastAllRecipesDoc != null) {
             query = query.startAfter(lastAllRecipesDoc);
         }
@@ -259,10 +249,12 @@ public class HomeActivity extends AppCompatActivity {
                 List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     Recipe recipe = document.toObject(Recipe.class);
-                    recipe.setUserId(document.getId());
-                    if (!allRecipeIds.contains(recipe.getId())) {
-                        newRecipes.add(recipe);
-                        allRecipeIds.add(recipe.getId());
+                    if (recipe != null) {
+                        recipe.setUserId(document.getId());
+                        if (!allRecipeIds.contains(recipe.getId())) {
+                            newRecipes.add(recipe);
+                            allRecipeIds.add(recipe.getId());
+                        }
                     }
                 }
                 lastAllRecipesDoc = task.getResult().getDocuments().isEmpty() ? null :

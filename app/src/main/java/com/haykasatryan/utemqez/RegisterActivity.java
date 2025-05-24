@@ -16,13 +16,13 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -68,7 +68,6 @@ public class RegisterActivity extends AppCompatActivity {
             userPassword.setSelection(userPassword.getText().length()); // Keep cursor at end
         });
 
-        // Set up password visibility toggle for userPasswordRe
         setupPasswordToggle(userPasswordRe, () -> {
             isConfirmPasswordVisible = !isConfirmPasswordVisible;
             if (isConfirmPasswordVisible) {
@@ -96,7 +95,6 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void registerUser() {
-
         Log.d(TAG, "Clicked");
 
         String name = userName.getText().toString().trim();
@@ -161,6 +159,8 @@ public class RegisterActivity extends AppCompatActivity {
         userData.put("email", email);
         userData.put("profilePicture", "");
         userData.put("createdAt", FieldValue.serverTimestamp());
+        userData.put("isAdmin", false); // Add isAdmin field, default to false
+        userData.put("likedRecipes", new ArrayList<String>()); // Initialize likedRecipes
 
         db.collection("users").document(user.getUid())
                 .set(userData)
@@ -172,8 +172,8 @@ public class RegisterActivity extends AppCompatActivity {
                     Log.e(TAG, "Error adding user to Firestore", e);
                     Toast.makeText(RegisterActivity.this, "Failed to store user: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
-
     }
+
     private void sendVerificationEmail(FirebaseUser user) {
         user.sendEmailVerification()
                 .addOnCompleteListener(task -> {
@@ -193,5 +193,4 @@ public class RegisterActivity extends AppCompatActivity {
                     }
                 });
     }
-
 }

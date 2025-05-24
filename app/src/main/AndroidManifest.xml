@@ -36,6 +36,10 @@
         <activity android:name=".SearchActivity" />
         <activity android:name=".ChatActivity"/>
         <activity android:name=".LikedRecipesActivity" />
+        <activity android:name=".AdminDashboardActivity" />
+        <activity android:name=".ManageUsersActivity" />
+        <activity android:name=".ModerateRecipesActivity" />
+        <activity android:name=".AnalyticsActivity" />
     </application>
 
 </manifest>
