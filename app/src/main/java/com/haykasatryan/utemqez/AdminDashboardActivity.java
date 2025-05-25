@@ -2,22 +2,21 @@ package com.haykasatryan.utemqez;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 public class AdminDashboardActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     private TextView adminTitle;
-    private Button btnManageUsers, btnModerateRecipes, btnViewAnalytics, btnBack;
+    private LinearLayout btnManageUsers, btnModerateRecipes, btnViewAnalytics;
+    private Button btnBack;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,17 +38,24 @@ public class AdminDashboardActivity extends AppCompatActivity {
             String userId = mAuth.getCurrentUser().getUid();
             db.collection("users").document(userId).get()
                     .addOnSuccessListener(documentSnapshot -> {
-                        Boolean isAdmin = documentSnapshot.getBoolean("isAdmin");
-                        if (isAdmin != null && isAdmin) {
-                            adminTitle.setText("Admin Dashboard");
+                        if (documentSnapshot.exists()) {
+                            Boolean isAdmin = documentSnapshot.getBoolean("isAdmin");
+                            if (isAdmin != null && isAdmin) {
+                                adminTitle.setText("Admin Dashboard");
+                            } else {
+                                Toast.makeText(this, "Access denied: Not an admin", Toast.LENGTH_LONG).show();
+                                startActivity(new Intent(this, ProfileActivity.class));
+                                finish();
+                            }
                         } else {
-                            Toast.makeText(this, "Access denied: Not an admin", Toast.LENGTH_LONG).show();
+                            Toast.makeText(this, "User data not found", Toast.LENGTH_LONG).show();
                             startActivity(new Intent(this, ProfileActivity.class));
                             finish();
                         }
                     })
                     .addOnFailureListener(e -> {
-                        Toast.makeText(this, "Error checking admin status", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Error checking admin status: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        startActivity(new Intent(this, ProfileActivity.class));
                         finish();
                     });
         } else {

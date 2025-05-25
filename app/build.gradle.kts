@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.firebase.auth.v2200)
     implementation(libs.appcompat.v141)
     implementation(libs.material.v150)
+    implementation(libs.material)
     implementation(libs.constraintlayout.v213)
     implementation(libs.glide)
     annotationProcessor(libs.compiler)

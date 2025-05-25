@@ -1,6 +1,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.UtemQez" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:fontFamily">@font/itim</item>
+        <item name="android:buttonStyle">@style/Widget.App.Button</item>
+    </style>
+
+    <!-- Custom button style -->
+    <style name="Widget.App.Button" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/button_background</item>
     </style>
 
     <style name="Theme.UtemQez" parent="Base.Theme.UtemQez" />
