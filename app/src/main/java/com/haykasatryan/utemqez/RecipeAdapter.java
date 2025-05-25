@@ -107,7 +107,9 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                             notifyDataSetChanged();
                         }
                     })
-                    .addOnFailureListener(e -> Log.e("RecipeAdapter", "Error fetching liked recipes", e));
+                    .addOnFailureListener(e -> Log.e("RecipeAdapter", "Error fetching liked recipes: " + e.getMessage(), e));
+        } else {
+            Log.w("RecipeAdapter", "No user logged in, skipping liked recipes fetch");
         }
     }
 
@@ -143,9 +145,13 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
             if (recipeHolder.recipeTitle != null) {
                 recipeHolder.recipeTitle.setText(recipe.getTitle() != null ? recipe.getTitle() : "Untitled");
+            } else {
+                Log.w("RecipeAdapter", "recipeTitle is null for position: " + position);
             }
             if (recipeHolder.likesCount != null) {
                 recipeHolder.likesCount.setText(String.valueOf(recipe.getLikes()));
+            } else {
+                Log.w("RecipeAdapter", "likesCount is null for position: " + position);
             }
 
             RequestOptions options = new RequestOptions()
@@ -156,11 +162,22 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     .error(R.drawable.recipe_image);
 
             if (recipeHolder.recipeImage != null) {
-                Glide.with(holder.itemView.getContext())
-                        .load(recipe.getImageUrl() != null ? recipe.getImageUrl() : R.drawable.recipe_image)
-                        .apply(options)
-                        .thumbnail(0.25f)
-                        .into(recipeHolder.recipeImage);
+                String imageUrl = recipe.getImageUrl();
+                if (imageUrl != null && !imageUrl.isEmpty()) {
+                    imageUrl = imageUrl.replace("http://", "https://");
+                    Glide.with(holder.itemView.getContext())
+                            .load(imageUrl)
+                            .apply(options)
+                            .thumbnail(0.25f)
+                            .into(recipeHolder.recipeImage);
+                } else {
+                    Glide.with(holder.itemView.getContext())
+                            .load(R.drawable.recipe_image)
+                            .apply(options)
+                            .into(recipeHolder.recipeImage);
+                }
+            } else {
+                Log.w("RecipeAdapter", "recipeImage is null for position: " + position);
             }
 
             String recipeIdStr = String.valueOf(recipe.getId());
@@ -243,7 +260,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                             }
                         })
                         .addOnFailureListener(e -> {
-                            Log.e("RecipeAdapter", "Failed to unlike recipe", e);
+                            Log.e("RecipeAdapter", "Failed to unlike recipe: " + e.getMessage(), e);
                             Toast.makeText(holder.itemView.getContext(), "Failed to unlike recipe", Toast.LENGTH_SHORT).show();
                         });
             } else {
@@ -263,7 +280,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                             }
                         })
                         .addOnFailureListener(e -> {
-                            Log.e("RecipeAdapter", "Failed to like recipe", e);
+                            Log.e("RecipeAdapter", "Failed to like recipe: " + e.getMessage(), e);
                             Toast.makeText(holder.itemView.getContext(), "Failed to like recipe", Toast.LENGTH_SHORT).show();
                         });
             }

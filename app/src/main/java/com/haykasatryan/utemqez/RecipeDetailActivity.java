@@ -53,12 +53,9 @@ public class RecipeDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_recipe_detail);
 
+        // Configure audio settings
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-
-        // Set notification volume to 0
         audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, 0, 0);
-
-        // Set media volume to maximum (100%)
         int maxMediaVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxMediaVolume, 0);
 
@@ -83,6 +80,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
         // Get recipe from intent
         recipe = getIntent().getParcelableExtra("recipe");
         if (recipe == null) {
+            Log.e(TAG, "No recipe provided in intent");
             Toast.makeText(this, "Error loading recipe", Toast.LENGTH_SHORT).show();
             finish();
             return;
@@ -90,25 +88,38 @@ public class RecipeDetailActivity extends AppCompatActivity {
 
         // Populate views
         detailRecipeTitle.setText(recipe.getTitle() != null ? recipe.getTitle() : "Untitled");
-        detailReadyInMinutes.setText(recipe.getReadyInMinutes() + " Min");
+        detailReadyInMinutes.setText(recipe.getReadyInMinutes() > 0 ? recipe.getReadyInMinutes() + " Min" : "N/A");
 
-        // Load image with Glide
+        // Load image with Glide, ensuring HTTPS
+        String imageUrl = recipe.getImageUrl();
         RequestOptions options = new RequestOptions()
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
                 .placeholder(R.drawable.recipe_image)
                 .error(R.drawable.recipe_image);
-        Glide.with(this)
-                .load(recipe.getImageUrl())
-                .apply(options)
-                .into(detailRecipeImage);
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            imageUrl = imageUrl.replace("http://", "https://");
+            Glide.with(this)
+                    .load(imageUrl)
+                    .apply(options)
+                    .into(detailRecipeImage);
+        } else {
+            Log.w(TAG, "No image URL provided for recipe: " + recipe.getTitle());
+            detailRecipeImage.setImageResource(R.drawable.recipe_image);
+        }
 
         // Populate nutrition
         Nutrition nutrition = recipe.getNutrition();
         if (nutrition != null) {
-            caloriesText.setText(nutrition.getCalories() != null ? nutrition.getCalories(): "N/A");
-            proteinText.setText(nutrition.getProtein() != null ? nutrition.getProtein(): "N/A");
-            fatText.setText(nutrition.getFat() != null ? nutrition.getFat(): "N/A");
-            carbsText.setText(nutrition.getCarbs() != null ? nutrition.getCarbs(): "N/A");
+            caloriesText.setText(nutrition.getCalories() != null ? nutrition.getCalories() : "N/A");
+            proteinText.setText(nutrition.getProtein() != null ? nutrition.getProtein() : "N/A");
+            fatText.setText(nutrition.getFat() != null ? nutrition.getFat() : "N/A");
+            carbsText.setText(nutrition.getCarbs() != null ? nutrition.getCarbs() : "N/A");
+        } else {
+            Log.w(TAG, "No nutrition data for recipe: " + recipe.getTitle());
+            caloriesText.setText("N/A");
+            proteinText.setText("N/A");
+            fatText.setText("N/A");
+            carbsText.setText("N/A");
         }
 
         // Populate ingredients
@@ -124,6 +135,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
             }
             detailIngredients.setText(ingredientsText.toString().trim());
         } else {
+            Log.w(TAG, "No ingredients for recipe: " + recipe.getTitle());
             detailIngredients.setText("No ingredients available");
         }
 
@@ -133,7 +145,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
         for (String step : instructionSteps) {
             instructionsText.append(step).append("\n");
         }
-        detailInstructions.setText(instructionsText.toString().trim());
+        detailInstructions.setText(instructionsText.length() > 0 ? instructionsText.toString().trim() : "No instructions available");
 
         // Toggle content visibility
         ingredientsHeader.setOnClickListener(v -> toggleContent(true));
@@ -143,7 +155,9 @@ public class RecipeDetailActivity extends AppCompatActivity {
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
                 textToSpeech.setLanguage(Locale.US);
+                Log.d(TAG, "TextToSpeech initialized successfully");
             } else {
+                Log.e(TAG, "TextToSpeech initialization failed: status " + status);
                 Toast.makeText(this, "Text-to-Speech initialization failed", Toast.LENGTH_SHORT).show();
             }
         });
@@ -186,23 +200,22 @@ public class RecipeDetailActivity extends AppCompatActivity {
                     String errorMessage;
                     switch (error) {
                         case SpeechRecognizer.ERROR_NO_MATCH:
-                            errorMessage = "No speech recognized (Error 7)";
+                            errorMessage = "No speech recognized";
                             break;
                         case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
-                            errorMessage = "Speech timeout (Error 6)";
+                            errorMessage = "Speech timeout";
                             break;
                         case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
-                            errorMessage = "Recognizer busy (Error 2)";
+                            errorMessage = "Recognizer busy";
                             break;
                         case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
-                            errorMessage = "Insufficient permissions (Error 9)";
+                            errorMessage = "Insufficient permissions";
                             break;
                         default:
                             errorMessage = "Speech recognition error: " + error;
                     }
-                    Log.e(TAG, errorMessage);
+                    Log.e(TAG, "Speech recognition error: " + errorMessage);
                     Toast.makeText(RecipeDetailActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
-                    // Immediately restart listening (except for permission error)
                     if (error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS &&
                             ContextCompat.checkSelfPermission(RecipeDetailActivity.this, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                         speechRecognizer.startListening(recognizerIntent);
@@ -217,7 +230,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
                     boolean commandRecognized = false;
                     if (matches != null && !matches.isEmpty()) {
                         String command = matches.get(0).toLowerCase();
-                        Log.d(TAG, "Recognized command: " + command + ", All matches: " + matches.toString());
+                        Log.d(TAG, "Recognized command: " + command + ", matches: " + matches);
                         Toast.makeText(RecipeDetailActivity.this, "Heard: " + command, Toast.LENGTH_SHORT).show();
                         if (command.contains("next") || command.contains("neck") || command.contains("text") || command.contains("continue")) {
                             readNextInstruction();
@@ -225,9 +238,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
                         }
                     } else {
                         Log.d(TAG, "No speech matches recognized");
-                        Toast.makeText(RecipeDetailActivity.this, "No speech detected", Toast.LENGTH_SHORT).show();
                     }
-                    // Immediately restart listening
                     if (!commandRecognized &&
                             ContextCompat.checkSelfPermission(RecipeDetailActivity.this, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                         speechRecognizer.startListening(recognizerIntent);
@@ -241,11 +252,9 @@ public class RecipeDetailActivity extends AppCompatActivity {
                     ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     if (matches != null && !matches.isEmpty()) {
                         String command = matches.get(0).toLowerCase();
-                        Log.d(TAG, "Partial recognized command: " + command + ", All matches: " + matches.toString());
-                        Toast.makeText(RecipeDetailActivity.this, "Heard (partial): " + command, Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "Partial command: " + command + ", matches: " + matches);
                         if (command.contains("next") || command.contains("neck") || command.contains("text") || command.contains("continue")) {
                             readNextInstruction();
-                            // Restart listening immediately after command
                             if (ContextCompat.checkSelfPermission(RecipeDetailActivity.this, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                                 speechRecognizer.startListening(recognizerIntent);
                             }
@@ -261,7 +270,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
         // Voice button to start/stop voice mode
         voiceButton.setOnClickListener(v -> {
             if (!isVoiceModeActive) {
-                // Check for RECORD_AUDIO permission
                 if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO_PERMISSION);
                     Toast.makeText(this, "Please grant microphone permission to use voice instructions", Toast.LENGTH_LONG).show();
@@ -273,7 +281,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
             }
         });
 
-        // Next step button to manually advance instructions
+        // Next step button
         if (nextStepButton != null) {
             nextStepButton.setOnClickListener(v -> readNextInstruction());
         }
@@ -285,7 +293,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
     private void startVoiceMode() {
         isVoiceModeActive = true;
         voiceButton.setText("Stop Voice Instructions");
-        currentInstructionIndex = -1; // Reset index
+        currentInstructionIndex = -1;
         readNextInstruction();
         speechRecognizer.startListening(recognizerIntent);
         Toast.makeText(this, "Say 'Next' or 'Continue' to hear the next instruction", Toast.LENGTH_LONG).show();
@@ -303,11 +311,10 @@ public class RecipeDetailActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, start voice mode
                 startVoiceMode();
             } else {
                 Toast.makeText(this, "Microphone permission denied. Voice instructions unavailable.", Toast.LENGTH_LONG).show();
-                voiceButton.setEnabled(false); // Disable button if permission is denied
+                voiceButton.setEnabled(false);
             }
         }
     }
@@ -316,21 +323,18 @@ public class RecipeDetailActivity extends AppCompatActivity {
         if (instructions == null || instructions.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        // Use regex to match numbered steps (e.g., "1.", "10.")
         Pattern pattern = Pattern.compile("(\\d+\\..*?)(?=\\d+\\.|$)", Pattern.DOTALL);
         Matcher matcher = pattern.matcher(instructions);
         List<String> result = new ArrayList<>();
         while (matcher.find()) {
             String step = matcher.group(1).trim();
             if (!step.isEmpty()) {
-                // Ensure step ends with a period
                 if (!step.endsWith(".")) {
                     step += ".";
                 }
                 result.add(step);
             }
         }
-        // If regex fails (e.g., malformed input), fall back to simple splitting
         if (result.isEmpty()) {
             String[] steps = instructions.split("\\s*\\d+\\.[\\s]*");
             for (String step : steps) {
@@ -361,16 +365,16 @@ public class RecipeDetailActivity extends AppCompatActivity {
         if (showIngredients) {
             ingredientsContent.setVisibility(View.VISIBLE);
             instructionsContent.setVisibility(View.GONE);
-            ingredientsHeader.setBackgroundResource(R.drawable.header_background); // Black background with rounded corners
+            ingredientsHeader.setBackgroundResource(R.drawable.header_background);
             ingredientsHeader.setTextColor(getResources().getColor(android.R.color.white));
-            instructionsHeader.setBackgroundResource(R.drawable.header_unselected_background); // Grey background with rounded corners
+            instructionsHeader.setBackgroundResource(R.drawable.header_unselected_background);
             instructionsHeader.setTextColor(getResources().getColor(R.color.black_background));
         } else {
             ingredientsContent.setVisibility(View.GONE);
             instructionsContent.setVisibility(View.VISIBLE);
-            ingredientsHeader.setBackgroundResource(R.drawable.header_unselected_background); // Grey background with rounded corners
+            ingredientsHeader.setBackgroundResource(R.drawable.header_unselected_background);
             ingredientsHeader.setTextColor(getResources().getColor(R.color.black_background));
-            instructionsHeader.setBackgroundResource(R.drawable.header_background); // Black background with rounded corners
+            instructionsHeader.setBackgroundResource(R.drawable.header_background);
             instructionsHeader.setTextColor(getResources().getColor(android.R.color.white));
         }
     }
