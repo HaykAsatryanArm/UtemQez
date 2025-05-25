@@ -94,10 +94,10 @@ public class RecipeDetailActivity extends AppCompatActivity {
         // Populate nutrition
         Nutrition nutrition = recipe.getNutrition();
         if (nutrition != null) {
-            caloriesText.setText(nutrition.getCalories() != null ? nutrition.getCalories() + " Kcal" : "N/A");
-            proteinText.setText(nutrition.getProtein() != null ? nutrition.getProtein() + "g proteins" : "N/A");
-            fatText.setText(nutrition.getFat() != null ? nutrition.getFat() + "g fats" : "N/A");
-            carbsText.setText(nutrition.getCarbs() != null ? nutrition.getCarbs() + "g carbs" : "N/A");
+            caloriesText.setText(nutrition.getCalories() != null ? nutrition.getCalories(): "N/A");
+            proteinText.setText(nutrition.getProtein() != null ? nutrition.getProtein(): "N/A");
+            fatText.setText(nutrition.getFat() != null ? nutrition.getFat(): "N/A");
+            carbsText.setText(nutrition.getCarbs() != null ? nutrition.getCarbs(): "N/A");
         }
 
         // Populate ingredients
@@ -350,13 +350,17 @@ public class RecipeDetailActivity extends AppCompatActivity {
         if (showIngredients) {
             ingredientsContent.setVisibility(View.VISIBLE);
             instructionsContent.setVisibility(View.GONE);
-            ingredientsHeader.setBackgroundColor(getResources().getColor(R.color.main));
-            instructionsHeader.setBackgroundColor(getResources().getColor(android.R.color.darker_gray));
+            ingredientsHeader.setBackgroundResource(R.drawable.header_background); // Black background with rounded corners
+            ingredientsHeader.setTextColor(getResources().getColor(android.R.color.white));
+            instructionsHeader.setBackgroundResource(R.drawable.header_unselected_background); // Grey background with rounded corners
+            instructionsHeader.setTextColor(getResources().getColor(R.color.black_background));
         } else {
             ingredientsContent.setVisibility(View.GONE);
             instructionsContent.setVisibility(View.VISIBLE);
-            ingredientsHeader.setBackgroundColor(getResources().getColor(android.R.color.darker_gray));
-            instructionsHeader.setBackgroundColor(getResources().getColor(R.color.main));
+            ingredientsHeader.setBackgroundResource(R.drawable.header_unselected_background); // Grey background with rounded corners
+            ingredientsHeader.setTextColor(getResources().getColor(R.color.black_background));
+            instructionsHeader.setBackgroundResource(R.drawable.header_background); // Black background with rounded corners
+            instructionsHeader.setTextColor(getResources().getColor(android.R.color.white));
         }
     }
 

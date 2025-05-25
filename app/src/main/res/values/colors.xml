@@ -11,4 +11,7 @@
     <color name="dark_teal_60">#992F4858</color>
     <color name="dark_teal_20">#332F4858</color>
     <color name="lavender">#8692f7</color>
+    <color name="grey_background">#B0BEC5</color> <!-- Light grey for unselected state -->
+    <color name="black_background">#212121</color> <!-- Black for selected state -->
+    <color name="colorPrimary">#212121</color>
 </resources>
