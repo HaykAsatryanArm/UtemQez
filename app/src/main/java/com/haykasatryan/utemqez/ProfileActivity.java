@@ -133,15 +133,20 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void initializeUserDocument(FirebaseUser user) {
         String userId = user.getUid();
-        Map<String, Object> userData = new HashMap<>();
-        userData.put("email", user.getEmail());
-        userData.put("displayName", user.getDisplayName() != null ? user.getDisplayName() : "User");
-        userData.put("isAdmin", false); // Default to false unless set elsewhere
-        // Only set profilePicture if it exists, to avoid overwriting
-        // userData.put("profilePicture", ""); // Optional: Initialize as empty
 
+        Map<String, Object> userData = new HashMap<>();
+        // Only add fields that should be updated if they're missing
+        if (user.getEmail() != null) {
+            userData.put("email", user.getEmail());
+        }
+        if (user.getDisplayName() != null) {
+            userData.put("displayName", user.getDisplayName());
+        }
+
+        // Note: We're not touching isAdmin here at all
+        // Only set if the document doesn't exist
         db.collection("users").document(userId)
-                .set(userData, SetOptions.merge())
+                .set(userData, SetOptions.mergeFields("email", "displayName"))
                 .addOnSuccessListener(aVoid -> Log.d(TAG, "User document initialized for: " + userId))
                 .addOnFailureListener(e -> Log.e(TAG, "Failed to initialize user document: " + e.getMessage(), e));
     }
