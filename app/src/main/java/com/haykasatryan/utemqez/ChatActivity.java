@@ -1,12 +1,14 @@
 package com.haykasatryan.utemqez;
 
 import android.content.Intent;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.text.SpannableStringBuilder;
 import android.text.style.BulletSpan;
 import android.text.style.LeadingMarginSpan;
 import android.text.style.StyleSpan;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -46,11 +48,8 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_chat);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+        // Set keyboard handling mode
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 
         // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
@@ -65,7 +64,7 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
 
         // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        layoutManager.setStackFromEnd(true); // Start from bottom
+        layoutManager.setStackFromEnd(true);
         chatRecyclerView.setLayoutManager(layoutManager);
         chatAdapter = new ChatMessageAdapter(messageList);
         chatRecyclerView.setAdapter(chatAdapter);
@@ -92,7 +91,7 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
             }
         });
 
-        // Close button click listener to navigate to HomeActivity
+        // Close button click listener
         closeButton.setOnClickListener(v -> {
             Intent intent = new Intent(ChatActivity.this, HomeActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -106,9 +105,26 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
             if (!message.isEmpty()) {
                 messageList.add(new ChatMessage(message, true));
                 chatAdapter.notifyItemInserted(messageList.size() - 1);
-                chatRecyclerView.scrollToPosition(messageList.size() - 1);
+                chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
                 messageInput.setText("");
                 GeminiPro.getResponse(chatModel, message, this);
+            }
+        });
+
+        // Keyboard visibility listener
+        final View rootView = findViewById(R.id.main);
+        rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            Rect r = new Rect();
+            rootView.getWindowVisibleDisplayFrame(r);
+            int screenHeight = rootView.getRootView().getHeight();
+            int keypadHeight = screenHeight - r.bottom;
+
+            if (keypadHeight > screenHeight * 0.15) { // Keyboard is visible
+                chatRecyclerView.postDelayed(() -> {
+                    if (messageList.size() > 0) {
+                        chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
+                    }
+                }, 100);
             }
         });
     }
@@ -118,7 +134,7 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
         runOnUiThread(() -> {
             messageList.add(new ChatMessage(response, false));
             chatAdapter.notifyItemInserted(messageList.size() - 1);
-            chatRecyclerView.scrollToPosition(messageList.size() - 1);
+            chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
         });
     }
 
@@ -127,7 +143,7 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
         runOnUiThread(() -> {
             messageList.add(new ChatMessage("Error: " + throwable.getMessage(), false));
             chatAdapter.notifyItemInserted(messageList.size() - 1);
-            chatRecyclerView.scrollToPosition(messageList.size() - 1);
+            chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
         });
     }
 }

@@ -5,144 +5,122 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
     tools:context=".ChatActivity">
 
-    <!-- Fixed Background Image -->
+    <!-- Background Image -->
     <ImageView
         android:id="@+id/background_image"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="@string/app_name"
         android:scaleType="centerCrop"
-        android:src="@drawable/pattern"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:src="@drawable/pattern" />
 
-    <!-- NestedScrollView for scrollable content -->
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/nestedScrollView"
+    <!-- Main content layout -->
+    <LinearLayout
+        android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/main"
+        <!-- Header -->
+        <LinearLayout
+            android:id="@+id/header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingBottom="88dp">
+            android:orientation="vertical"
+            android:padding="16dp">
 
             <LinearLayout
-                android:id="@+id/header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-                <!-- Horizontal layout for header, profile icon, and close button -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <!-- Header Title -->
-                    <TextView
-                        android:id="@+id/header_title"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="center"
-                        android:paddingHorizontal="24dp"
-                        android:paddingVertical="16dp"
-                        android:text="Chat with AI"
-                        android:textColor="@color/blackot"
-                        android:textSize="24sp"
-                        android:textStyle="bold" />
-
-                    <!-- Profile Icon -->
-                    <ImageButton
-                        android:id="@+id/nav_profile"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:layout_marginEnd="8dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Profile"
-                        android:padding="8dp"
-                        android:scaleType="fitCenter"
-                        android:src="@drawable/profile" />
-
-                    <!-- Close Button -->
-                    <Button
-                        android:id="@+id/closeButton"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:layout_marginEnd="8dp"
-                        android:text="X"
-                        android:textSize="18sp"
-                        android:textColor="@android:color/black"
-                        android:background="@drawable/rounded_white_square"
-                        android:contentDescription="Close chat" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- RecyclerView for chat messages -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/chatRecyclerView"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:padding="12dp"
-                app:layout_constraintBottom_toTopOf="@id/inputLayout"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/header"
-                tools:listitem="@layout/chat_message_item" />
-
-            <!-- Input layout for message input and send button -->
-            <LinearLayout
-                android:id="@+id/inputLayout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="12dp"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent">
-
-                <EditText
-                    android:id="@+id/messageInput"
+                <TextView
+                    android:id="@+id/header_title"
                     android:layout_width="0dp"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/search_bar_background"
-                    android:hint="Type a message..."
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
+                    android:gravity="center"
+                    android:paddingHorizontal="24dp"
+                    android:paddingVertical="16dp"
+                    android:text="Chat with AI"
                     android:textColor="@color/blackot"
-                    android:textColorHint="@color/grey"
-                    android:textSize="16sp" />
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
 
                 <ImageButton
-                    android:id="@+id/sendButton"
+                    android:id="@+id/nav_profile"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Send"
+                    android:contentDescription="Profile"
                     android:padding="8dp"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_send" />
+                    android:src="@drawable/profile" />
+
+                <Button
+                    android:id="@+id/closeButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="8dp"
+                    android:text="X"
+                    android:textSize="18sp"
+                    android:textColor="@android:color/black"
+                    android:background="@drawable/rounded_white_square"
+                    android:contentDescription="Close chat" />
             </LinearLayout>
+        </LinearLayout>
 
-        </androidx.constraintlayout.widget.ConstraintLayout>
-    </androidx.core.widget.NestedScrollView>
+        <!-- RecyclerView for messages -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/chatRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:padding="12dp"
+            android:clipToPadding="false"
+            android:scrollbars="vertical" />
 
+        <!-- Input area -->
+        <LinearLayout
+            android:id="@+id/inputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:background="@android:color/white"
+            android:elevation="8dp">
+
+            <EditText
+                android:id="@+id/messageInput"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:background="@drawable/search_bar_background"
+                android:hint="Type a message..."
+                android:imeOptions="actionSend"
+                android:inputType="textCapSentences|textMultiLine"
+                android:maxLines="3"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textColor="@color/blackot"
+                android:textColorHint="@color/grey"
+                android:textSize="16sp" />
+
+            <ImageButton
+                android:id="@+id/sendButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Send"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_send" />
+        </LinearLayout>
+    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
