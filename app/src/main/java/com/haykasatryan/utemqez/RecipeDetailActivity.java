@@ -1,7 +1,9 @@
 package com.haykasatryan.utemqez;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -50,6 +52,15 @@ public class RecipeDetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_recipe_detail);
+
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+
+        // Set notification volume to 0
+        audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, 0, 0);
+
+        // Set media volume to maximum (100%)
+        int maxMediaVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxMediaVolume, 0);
 
         // Initialize views
         detailRecipeTitle = findViewById(R.id.detailRecipeTitle);
