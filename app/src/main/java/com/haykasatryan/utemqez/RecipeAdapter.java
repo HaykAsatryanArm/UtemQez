@@ -26,6 +26,7 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -39,7 +40,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     private boolean isLoading = false;
     private final FirebaseAuth mAuth;
     private final FirebaseFirestore db;
-    private List<String> likedRecipeIds = new ArrayList<>();
+    private final List<String> likedRecipeIds = Collections.synchronizedList(new ArrayList<>());
 
     public interface OnDeleteClickListener {
         void onDeleteClick(Recipe recipe);
@@ -60,7 +61,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     @Override
     public long getItemId(int position) {
-        if (getItemViewType(position) == TYPE_RECIPE) {
+        if (getItemViewType(position) == TYPE_RECIPE && recipeList != null && position < recipeList.size()) {
             return recipeList.get(position).getId();
         }
         return -1;
@@ -97,11 +98,14 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         if (user != null) {
             db.collection("users").document(user.getUid()).get()
                     .addOnSuccessListener(documentSnapshot -> {
-                        likedRecipeIds = (List<String>) documentSnapshot.get("likedRecipes");
-                        if (likedRecipeIds == null) {
-                            likedRecipeIds = new ArrayList<>();
+                        synchronized (likedRecipeIds) {
+                            likedRecipeIds.clear();
+                            List<String> fetchedIds = (List<String>) documentSnapshot.get("likedRecipes");
+                            if (fetchedIds != null) {
+                                likedRecipeIds.addAll(fetchedIds);
+                            }
+                            notifyDataSetChanged();
                         }
-                        notifyDataSetChanged();
                     })
                     .addOnFailureListener(e -> Log.e("RecipeAdapter", "Error fetching liked recipes", e));
         }
@@ -109,7 +113,10 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     @Override
     public int getItemViewType(int position) {
-        return (position == recipeList.size() && isLoading) ? TYPE_LOADING : TYPE_RECIPE;
+        if (recipeList == null || position >= recipeList.size()) {
+            return TYPE_LOADING;
+        }
+        return TYPE_RECIPE;
     }
 
     @NonNull
@@ -127,10 +134,19 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (holder instanceof RecipeViewHolder) {
+            if (recipeList == null || position >= recipeList.size()) {
+                Log.e("RecipeAdapter", "Invalid recipe list or position: " + position);
+                return;
+            }
             Recipe recipe = recipeList.get(position);
             RecipeViewHolder recipeHolder = (RecipeViewHolder) holder;
-            recipeHolder.recipeTitle.setText(recipe.getTitle() != null ? recipe.getTitle() : "Untitled");
-            recipeHolder.likesCount.setText(String.valueOf(recipe.getLikes()));
+
+            if (recipeHolder.recipeTitle != null) {
+                recipeHolder.recipeTitle.setText(recipe.getTitle() != null ? recipe.getTitle() : "Untitled");
+            }
+            if (recipeHolder.likesCount != null) {
+                recipeHolder.likesCount.setText(String.valueOf(recipe.getLikes()));
+            }
 
             RequestOptions options = new RequestOptions()
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -139,32 +155,37 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     .placeholder(R.drawable.recipe_image)
                     .error(R.drawable.recipe_image);
 
-            Glide.with(holder.itemView.getContext())
-                    .load(recipe.getImageUrl())
-                    .apply(options)
-                    .thumbnail(0.25f)
-                    .into(recipeHolder.recipeImage);
+            if (recipeHolder.recipeImage != null) {
+                Glide.with(holder.itemView.getContext())
+                        .load(recipe.getImageUrl() != null ? recipe.getImageUrl() : R.drawable.recipe_image)
+                        .apply(options)
+                        .thumbnail(0.25f)
+                        .into(recipeHolder.recipeImage);
+            }
 
             String recipeIdStr = String.valueOf(recipe.getId());
             boolean isLiked = likedRecipeIds.contains(recipeIdStr);
-            recipeHolder.likeButton.setImageResource(isLiked ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
+            if (recipeHolder.likeButton != null) {
+                recipeHolder.likeButton.setImageResource(isLiked ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
+                recipeHolder.likeButton.setOnClickListener(v -> {
+                    FirebaseUser user = mAuth.getCurrentUser();
+                    if (user == null) {
+                        Context context = holder.itemView.getContext();
+                        context.startActivity(new Intent(context, LoginActivity.class));
+                        Toast.makeText(context, "Please log in to like recipes", Toast.LENGTH_SHORT).show();
+                    } else {
+                        handleLike(recipe, recipeHolder);
+                    }
+                });
+            }
 
-            recipeHolder.likeButton.setOnClickListener(v -> {
-                FirebaseUser user = mAuth.getCurrentUser();
-                if (user == null) {
-                    Context context = holder.itemView.getContext();
-                    context.startActivity(new Intent(context, LoginActivity.class));
-                    Toast.makeText(context, "Please log in to like recipes", Toast.LENGTH_SHORT).show();
-                } else {
-                    handleLike(recipe, recipeHolder);
-                }
-            });
-
-            recipeHolder.viewDetailsButton.setOnClickListener(v -> {
-                Intent intent = new Intent(holder.itemView.getContext(), RecipeDetailActivity.class);
-                intent.putExtra("recipe", recipe);
-                holder.itemView.getContext().startActivity(intent);
-            });
+            if (recipeHolder.viewDetailsButton != null) {
+                recipeHolder.viewDetailsButton.setOnClickListener(v -> {
+                    Intent intent = new Intent(holder.itemView.getContext(), RecipeDetailActivity.class);
+                    intent.putExtra("recipe", recipe);
+                    holder.itemView.getContext().startActivity(intent);
+                });
+            }
 
             if (recipeHolder.deleteButton != null) {
                 recipeHolder.deleteButton.setVisibility(onDeleteClickListener != null ? View.VISIBLE : View.GONE);
@@ -188,44 +209,64 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     @Override
     public int getItemCount() {
-        return recipeList.size() + (isLoading ? 1 : 0);
+        return recipeList != null ? recipeList.size() + (isLoading ? 1 : 0) : (isLoading ? 1 : 0);
     }
 
     private void handleLike(Recipe recipe, RecipeViewHolder holder) {
         FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) {
+            Context context = holder.itemView.getContext();
+            context.startActivity(new Intent(context, LoginActivity.class));
+            Toast.makeText(context, "Please log in to like recipes", Toast.LENGTH_SHORT).show();
+            return;
+        }
         String recipeIdStr = String.valueOf(recipe.getId());
-        DocumentReference recipeRef = db.collection("recipes").document(recipe.getUserId()); // Use userId for document ID
+        DocumentReference recipeRef = db.collection("recipes").document(recipeIdStr);
         DocumentReference userRef = db.collection("users").document(user.getUid());
 
-        boolean isLiked = likedRecipeIds.contains(recipeIdStr);
-        if (isLiked) {
-            userRef.update("likedRecipes", FieldValue.arrayRemove(recipeIdStr))
-                    .addOnSuccessListener(aVoid -> {
-                        likedRecipeIds.remove(recipeIdStr);
-                        recipe.setLikes(recipe.getLikes() - 1);
-                        recipeRef.update("likes", FieldValue.increment(-1));
-                        holder.likesCount.setText(String.valueOf(recipe.getLikes()));
-                        holder.likeButton.setImageResource(R.drawable.ic_heart_outline);
-                        notifyItemChanged(holder.getAdapterPosition());
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e("RecipeAdapter", "Failed to unlike recipe", e);
-                        Toast.makeText(holder.itemView.getContext(), "Failed to unlike recipe", Toast.LENGTH_SHORT).show();
-                    });
-        } else {
-            userRef.update("likedRecipes", FieldValue.arrayUnion(recipeIdStr))
-                    .addOnSuccessListener(aVoid -> {
-                        likedRecipeIds.add(recipeIdStr);
-                        recipe.setLikes(recipe.getLikes() + 1);
-                        recipeRef.update("likes", FieldValue.increment(1));
-                        holder.likesCount.setText(String.valueOf(recipe.getLikes()));
-                        holder.likeButton.setImageResource(R.drawable.ic_heart_filled);
-                        notifyItemChanged(holder.getAdapterPosition());
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e("RecipeAdapter", "Failed to like recipe", e);
-                        Toast.makeText(holder.itemView.getContext(), "Failed to like recipe", Toast.LENGTH_SHORT).show();
-                    });
+        synchronized (likedRecipeIds) {
+            boolean isLiked = likedRecipeIds.contains(recipeIdStr);
+            if (isLiked) {
+                userRef.update("likedRecipes", FieldValue.arrayRemove(recipeIdStr))
+                        .addOnSuccessListener(aVoid -> {
+                            synchronized (likedRecipeIds) {
+                                likedRecipeIds.remove(recipeIdStr);
+                                recipe.setLikes(recipe.getLikes() - 1);
+                                recipeRef.update("likes", FieldValue.increment(-1));
+                                if (holder.likesCount != null) {
+                                    holder.likesCount.setText(String.valueOf(recipe.getLikes()));
+                                }
+                                if (holder.likeButton != null) {
+                                    holder.likeButton.setImageResource(R.drawable.ic_heart_outline);
+                                }
+                                notifyItemChanged(holder.getAdapterPosition());
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            Log.e("RecipeAdapter", "Failed to unlike recipe", e);
+                            Toast.makeText(holder.itemView.getContext(), "Failed to unlike recipe", Toast.LENGTH_SHORT).show();
+                        });
+            } else {
+                userRef.update("likedRecipes", FieldValue.arrayUnion(recipeIdStr))
+                        .addOnSuccessListener(aVoid -> {
+                            synchronized (likedRecipeIds) {
+                                likedRecipeIds.add(recipeIdStr);
+                                recipe.setLikes(recipe.getLikes() + 1);
+                                recipeRef.update("likes", FieldValue.increment(1));
+                                if (holder.likesCount != null) {
+                                    holder.likesCount.setText(String.valueOf(recipe.getLikes()));
+                                }
+                                if (holder.likeButton != null) {
+                                    holder.likeButton.setImageResource(R.drawable.ic_heart_filled);
+                                }
+                                notifyItemChanged(holder.getAdapterPosition());
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            Log.e("RecipeAdapter", "Failed to like recipe", e);
+                            Toast.makeText(holder.itemView.getContext(), "Failed to like recipe", Toast.LENGTH_SHORT).show();
+                        });
+            }
         }
     }
 
