@@ -33,6 +33,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.SetOptions;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -46,6 +47,7 @@ import java.util.Random;
 
 public class ProfileActivity extends AppCompatActivity {
 
+    private static final String TAG = "ProfileActivity";
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     private TextView userName, userEmail;
@@ -101,18 +103,20 @@ public class ProfileActivity extends AppCompatActivity {
         if (user != null) {
             userName.setText(user.getDisplayName() != null ? user.getDisplayName() : "User");
             userEmail.setText(user.getEmail());
+            initializeUserDocument(user); // Ensure user document exists
             loadProfilePicture(user.getEmail());
             fetchUserRecipes(user.getUid());
 
-            // Check if user is admin and show/hide admin button
+            // Check if user is admin
             db.collection("users").document(user.getUid()).get()
                     .addOnSuccessListener(documentSnapshot -> {
                         Boolean isAdmin = documentSnapshot.getBoolean("isAdmin");
                         btnAdminDashboard.setVisibility((isAdmin != null && isAdmin) ? View.VISIBLE : View.GONE);
+                        Log.d(TAG, "Admin status checked: isAdmin=" + isAdmin);
                     })
-                    .addOnFailureListener(e -> Log.e("ProfileActivity", "Error checking admin status: " + e.getMessage(), e));
+                    .addOnFailureListener(e -> Log.e(TAG, "Error checking admin status: " + e.getMessage(), e));
         } else {
-            Log.w("ProfileActivity", "No user logged in");
+            Log.w(TAG, "No user logged in");
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         }
@@ -125,6 +129,21 @@ public class ProfileActivity extends AppCompatActivity {
             finish();
         });
         btnAdminDashboard.setOnClickListener(v -> startActivity(new Intent(this, AdminDashboardActivity.class)));
+    }
+
+    private void initializeUserDocument(FirebaseUser user) {
+        String userId = user.getUid();
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("email", user.getEmail());
+        userData.put("displayName", user.getDisplayName() != null ? user.getDisplayName() : "User");
+        userData.put("isAdmin", false); // Default to false unless set elsewhere
+        // Only set profilePicture if it exists, to avoid overwriting
+        // userData.put("profilePicture", ""); // Optional: Initialize as empty
+
+        db.collection("users").document(userId)
+                .set(userData, SetOptions.merge())
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "User document initialized for: " + userId))
+                .addOnFailureListener(e -> Log.e(TAG, "Failed to initialize user document: " + e.getMessage(), e));
     }
 
     private void fetchUserRecipes(String userId) {
@@ -173,7 +192,7 @@ public class ProfileActivity extends AppCompatActivity {
                                 userRecipesList.add(recipe);
                             } catch (Exception e) {
                                 runOnUiThread(() -> Toast.makeText(this, "Error loading recipe: " + document.getId(), Toast.LENGTH_SHORT).show());
-                                Log.e("ProfileActivity", "Error parsing recipe: " + document.getId(), e);
+                                Log.e(TAG, "Error parsing recipe: " + document.getId(), e);
                             }
                         }
                         runOnUiThread(() -> {
@@ -181,6 +200,7 @@ public class ProfileActivity extends AppCompatActivity {
                             TextView noRecipesText = findViewById(R.id.noRecipesText);
                             noRecipesText.setVisibility(userRecipesList.isEmpty() ? View.VISIBLE : View.GONE);
                             userRecipesRecyclerView.setVisibility(userRecipesList.isEmpty() ? View.GONE : View.VISIBLE);
+                            Log.d(TAG, "Fetched " + userRecipesList.size() + " user recipes");
                         });
                     } else {
                         runOnUiThread(() -> {
@@ -189,6 +209,7 @@ public class ProfileActivity extends AppCompatActivity {
                             noRecipesText.setVisibility(View.VISIBLE);
                             userRecipesRecyclerView.setVisibility(View.GONE);
                         });
+                        Log.e(TAG, "Error fetching user recipes", task.getException());
                     }
                 });
     }
@@ -209,10 +230,11 @@ public class ProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, "Recipe deleted successfully", Toast.LENGTH_SHORT).show();
                     fetchUserRecipes(mAuth.getCurrentUser().getUid());
+                    Log.d(TAG, "Recipe deleted: " + recipe.getId());
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Failed to delete recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.e("ProfileActivity", "Error deleting recipe: " + e.getMessage(), e);
+                    Log.e(TAG, "Error deleting recipe: " + e.getMessage(), e);
                 });
     }
 
@@ -258,6 +280,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         recipeDialog.setCanceledOnTouchOutside(true);
         recipeDialog.show();
+        Log.d(TAG, "Recipe form dialog shown");
     }
 
     private boolean validateRecipeForm() {
@@ -311,6 +334,7 @@ public class ProfileActivity extends AppCompatActivity {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) {
             Toast.makeText(this, "Please log in to post a recipe", Toast.LENGTH_SHORT).show();
+            Log.w(TAG, "No user logged in for posting recipe");
             return;
         }
 
@@ -378,10 +402,11 @@ public class ProfileActivity extends AppCompatActivity {
                     Toast.makeText(this, "Recipe posted successfully, pending approval", Toast.LENGTH_SHORT).show();
                     clearForm();
                     fetchUserRecipes(user.getUid());
+                    Log.d(TAG, "Recipe posted: " + recipeId);
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Failed to post recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.e("ProfileActivity", "Error posting recipe: " + e.getMessage(), e);
+                    Log.e(TAG, "Error posting recipe: " + e.getMessage(), e);
                 });
     }
 
@@ -407,7 +432,7 @@ public class ProfileActivity extends AppCompatActivity {
             result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     Uri imageUri = result.getData().getData();
-                    Log.d("ProfileActivity", "Profile image selected: " + imageUri);
+                    Log.d(TAG, "Profile image selected: " + imageUri);
                     try {
                         InputStream inputStream = getContentResolver().openInputStream(imageUri);
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
@@ -416,14 +441,14 @@ public class ProfileActivity extends AppCompatActivity {
                             uploadImageToCloudinary(bitmap, true);
                         } else {
                             Toast.makeText(this, "Error loading image", Toast.LENGTH_SHORT).show();
-                            Log.e("ProfileActivity", "Failed to decode bitmap");
+                            Log.e(TAG, "Failed to decode bitmap");
                         }
                     } catch (FileNotFoundException e) {
                         Toast.makeText(this, "Error loading profile image", Toast.LENGTH_SHORT).show();
-                        Log.e("ProfileActivity", "File not found", e);
+                        Log.e(TAG, "File not found", e);
                     }
                 } else {
-                    Log.d("ProfileActivity", "Profile image selection cancelled or failed");
+                    Log.d(TAG, "Profile image selection cancelled or failed");
                 }
             }
     );
@@ -433,7 +458,7 @@ public class ProfileActivity extends AppCompatActivity {
             result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     Uri imageUri = result.getData().getData();
-                    Log.d("ProfileActivity", "Recipe image selected: " + imageUri);
+                    Log.d(TAG, "Recipe image selected: " + imageUri);
                     try {
                         InputStream inputStream = getContentResolver().openInputStream(imageUri);
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
@@ -441,14 +466,14 @@ public class ProfileActivity extends AppCompatActivity {
                             uploadImageToCloudinary(bitmap, false);
                         } else {
                             Toast.makeText(this, "Error loading recipe image", Toast.LENGTH_SHORT).show();
-                            Log.e("ProfileActivity", "Failed to decode bitmap");
+                            Log.e(TAG, "Failed to decode bitmap");
                         }
                     } catch (FileNotFoundException e) {
                         Toast.makeText(this, "Error loading recipe image", Toast.LENGTH_SHORT).show();
-                        Log.e("ProfileActivity", "File not found", e);
+                        Log.e(TAG, "File not found", e);
                     }
                 } else {
-                    Log.d("ProfileActivity", "Recipe image selection cancelled or failed");
+                    Log.d(TAG, "Recipe image selection cancelled or failed");
                 }
             }
     );
@@ -464,7 +489,7 @@ public class ProfileActivity extends AppCompatActivity {
                 Map uploadResult = cloudinary.uploader().upload(file, ObjectUtils.emptyMap());
                 String imageUrl = (String) uploadResult.get("url");
                 if (imageUrl != null) {
-                    imageUrl = imageUrl.replace("http://", "https://"); // Ensure HTTPS for compatibility
+                    imageUrl = imageUrl.replace("http://", "https://");
                     if (isProfilePicture) {
                         saveProfilePictureToFirestore(imageUrl);
                         String finalImageUrl = imageUrl;
@@ -481,13 +506,15 @@ public class ProfileActivity extends AppCompatActivity {
                         recipeImageUrl = imageUrl;
                         runOnUiThread(() -> imageUrlText.setText(recipeImageUrl));
                     }
+                    Log.d(TAG, "Image uploaded: " + imageUrl);
                 } else {
                     runOnUiThread(() -> Toast.makeText(this, "Image upload returned no URL", Toast.LENGTH_SHORT).show());
+                    Log.e(TAG, "No URL returned from Cloudinary");
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     Toast.makeText(this, "Failed to upload image: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    Log.e("ProfileActivity", "Upload error", e);
+                    Log.e(TAG, "Upload error", e);
                 });
             }
         }).start();
@@ -498,32 +525,44 @@ public class ProfileActivity extends AppCompatActivity {
         try (FileOutputStream out = new FileOutputStream(file)) {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
             out.flush();
-            Log.d("ProfileActivity", "File created at: " + file.getAbsolutePath() + ", size: " + file.length());
+            Log.d(TAG, "File created at: " + file.getAbsolutePath() + ", size: " + file.length());
             return file;
         } catch (Exception e) {
             runOnUiThread(() -> Toast.makeText(this, "Error converting image: " + e.getMessage(), Toast.LENGTH_LONG).show());
-            Log.e("ProfileActivity", "Error converting image", e);
+            Log.e(TAG, "Error converting image", e);
             return null;
         }
     }
 
     private void saveProfilePictureToFirestore(String imageUrl) {
         FirebaseUser user = mAuth.getCurrentUser();
-        if (user != null) {
-            Map<String, Object> updates = new HashMap<>();
-            updates.put("profilePicture", imageUrl);
-
-            db.collection("users").document(user.getUid())
-                    .update(updates)
-                    .addOnSuccessListener(aVoid -> runOnUiThread(() -> {
-                        Toast.makeText(this, "Profile picture updated", Toast.LENGTH_SHORT).show();
-                        loadProfilePicture(user.getEmail());
-                    }))
-                    .addOnFailureListener(e -> runOnUiThread(() -> {
-                        Toast.makeText(this, "Failed to update profile picture: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                        Log.e("ProfileActivity", "Firestore update error", e);
-                    }));
+        if (user == null) {
+            Log.w(TAG, "No user logged in for saving profile picture");
+            runOnUiThread(() -> Toast.makeText(this, "No user logged in", Toast.LENGTH_SHORT).show());
+            return;
         }
+
+        String userId = user.getUid();
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("profilePicture", imageUrl);
+        updates.put("email", user.getEmail());
+        updates.put("displayName", user.getDisplayName() != null ? user.getDisplayName() : "User");
+
+        db.collection("users").document(userId)
+                .set(updates, SetOptions.merge())
+                .addOnSuccessListener(aVoid -> {
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "Profile picture saved successfully", Toast.LENGTH_SHORT).show();
+                        loadProfilePicture(user.getEmail());
+                    });
+                    Log.d(TAG, "Profile picture saved for user: " + userId + ", URL: " + imageUrl);
+                })
+                .addOnFailureListener(e -> {
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "Failed to save profile picture: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        Log.e(TAG, "Failed to save profile picture for user: " + userId + ", error: " + e.getMessage(), e);
+                    });
+                });
     }
 
     private void loadProfilePicture(String email) {
@@ -542,15 +581,18 @@ public class ProfileActivity extends AppCompatActivity {
                                             .placeholder(R.drawable.user)
                                             .error(R.drawable.user))
                                     .into(profileImage);
+                            Log.d(TAG, "Profile picture loaded: " + imageUrl);
                         } else {
                             profileImage.setImageResource(R.drawable.user);
+                            Log.d(TAG, "No profile picture found for email: " + email);
                         }
                     } else {
                         profileImage.setImageResource(R.drawable.user);
+                        Log.w(TAG, "No user document found for email: " + email);
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Log.e("ProfileActivity", "Error loading profile picture: " + e.getMessage(), e);
+                    Log.e(TAG, "Error loading profile picture: " + e.getMessage(), e);
                     profileImage.setImageResource(R.drawable.user);
                 });
     }
