@@ -298,16 +298,7 @@
                                 android:text="Start Voice Instructions"
                                 android:textSize="16sp" />
 
-                            <Button
-                                android:id="@+id/nextStepButton"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginBottom="8dp"
-                                android:backgroundTint="@android:color/holo_blue_dark"
-                                android:contentDescription="Advance to next instruction"
-                                android:text="Next Step"
-                                android:textSize="16sp" />
-
+                            <!-- Removed: Next Step Button -->
                             <TextView
                                 android:id="@+id/detailInstructions"
                                 android:layout_width="match_parent"

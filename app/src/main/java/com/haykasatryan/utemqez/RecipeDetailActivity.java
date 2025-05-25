@@ -40,7 +40,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
     private LinearLayout ingredientsContent, instructionsContent;
     private ImageView detailRecipeImage;
     private TextView caloriesText, proteinText, fatText, carbsText;
-    private Button voiceButton, nextStepButton;
+    private Button voiceButton;
     private TextToSpeech textToSpeech;
     private SpeechRecognizer speechRecognizer;
     private Intent recognizerIntent;
@@ -74,7 +74,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
         ingredientsContent = findViewById(R.id.ingredientsContent);
         instructionsContent = findViewById(R.id.instructionsContent);
         voiceButton = findViewById(R.id.voiceButton);
-        nextStepButton = findViewById(R.id.nextStepButton);
         Button closeButton = findViewById(R.id.closeButton);
 
         // Get recipe from intent
@@ -280,11 +279,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
                 stopVoiceMode();
             }
         });
-
-        // Next step button
-        if (nextStepButton != null) {
-            nextStepButton.setOnClickListener(v -> readNextInstruction());
-        }
 
         // Close button
         closeButton.setOnClickListener(v -> finish());
