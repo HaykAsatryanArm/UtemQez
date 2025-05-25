@@ -277,17 +277,28 @@
                             android:id="@+id/voiceButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Read Instructions Aloud"
+                            android:text="Start Voice Instructions"
                             android:textSize="16sp"
                             android:backgroundTint="@android:color/holo_green_dark"
                             android:layout_marginBottom="8dp"
-                            android:contentDescription="Read instructions aloud"/>
+                            android:contentDescription="Start voice instructions"/>
+
+                        <Button
+                            android:id="@+id/nextStepButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Next Step"
+                            android:textSize="16sp"
+                            android:backgroundTint="@android:color/holo_blue_dark"
+                            android:layout_marginBottom="8dp"
+                            android:contentDescription="Advance to next instruction"/>
 
                         <TextView
                             android:id="@+id/detailInstructions"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:textSize="16sp"/>
+                            android:textSize="16sp"
+                            android:lineSpacingExtra="4dp"/>
                     </LinearLayout>
                 </LinearLayout>
             </androidx.constraintlayout.widget.ConstraintLayout>
