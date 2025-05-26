@@ -209,7 +209,6 @@ public class ProfileActivity extends AppCompatActivity {
                         });
                     } else {
                         runOnUiThread(() -> {
-                            Toast.makeText(this, "Failed to load recipes: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                             TextView noRecipesText = findViewById(R.id.noRecipesText);
                             noRecipesText.setVisibility(View.VISIBLE);
                             userRecipesRecyclerView.setVisibility(View.GONE);
@@ -238,7 +237,6 @@ public class ProfileActivity extends AppCompatActivity {
                     Log.d(TAG, "Recipe deleted: " + recipe.getId());
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Failed to delete recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     Log.e(TAG, "Error deleting recipe: " + e.getMessage(), e);
                 });
     }
@@ -410,7 +408,6 @@ public class ProfileActivity extends AppCompatActivity {
                     Log.d(TAG, "Recipe posted: " + recipeId);
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Failed to post recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     Log.e(TAG, "Error posting recipe: " + e.getMessage(), e);
                 });
     }
@@ -445,11 +442,9 @@ public class ProfileActivity extends AppCompatActivity {
                             profileImage.setImageBitmap(bitmap);
                             uploadImageToCloudinary(bitmap, true);
                         } else {
-                            Toast.makeText(this, "Error loading image", Toast.LENGTH_SHORT).show();
                             Log.e(TAG, "Failed to decode bitmap");
                         }
                     } catch (FileNotFoundException e) {
-                        Toast.makeText(this, "Error loading profile image", Toast.LENGTH_SHORT).show();
                         Log.e(TAG, "File not found", e);
                     }
                 } else {
@@ -470,11 +465,9 @@ public class ProfileActivity extends AppCompatActivity {
                         if (bitmap != null) {
                             uploadImageToCloudinary(bitmap, false);
                         } else {
-                            Toast.makeText(this, "Error loading recipe image", Toast.LENGTH_SHORT).show();
                             Log.e(TAG, "Failed to decode bitmap");
                         }
                     } catch (FileNotFoundException e) {
-                        Toast.makeText(this, "Error loading recipe image", Toast.LENGTH_SHORT).show();
                         Log.e(TAG, "File not found", e);
                     }
                 } else {

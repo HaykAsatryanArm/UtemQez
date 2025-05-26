@@ -168,13 +168,9 @@ public class SearchActivity extends AppCompatActivity {
                     searchRecipesList.addAll(updatedList);
                     searchRecipesAdapter.updateList(updatedList);
                     searchRecipesAdapter.setLoading(false);
-                    if (newRecipes.isEmpty() && !lowerQuery.isEmpty()) {
-                        Toast.makeText(this, "No recipes found for \"" + query + "\"", Toast.LENGTH_SHORT).show();
-                    }
                 });
             } else {
                 runOnUiThread(() -> {
-                    Toast.makeText(this, "Failed to load recipes", Toast.LENGTH_SHORT).show();
                     searchRecipesAdapter.setLoading(false);
                 });
             }

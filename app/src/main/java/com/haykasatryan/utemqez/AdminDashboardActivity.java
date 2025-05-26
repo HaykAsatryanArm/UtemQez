@@ -54,12 +54,10 @@ public class AdminDashboardActivity extends AppCompatActivity {
                         }
                     })
                     .addOnFailureListener(e -> {
-                        Toast.makeText(this, "Error checking admin status: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(this, ProfileActivity.class));
                         finish();
                     });
         } else {
-            Toast.makeText(this, "Please log in", Toast.LENGTH_SHORT).show();
             startActivity(new Intent(this, LoginActivity.class));
             finish();
         }

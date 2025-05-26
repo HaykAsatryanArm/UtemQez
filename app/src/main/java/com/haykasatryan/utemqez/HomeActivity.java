@@ -217,14 +217,10 @@ public class HomeActivity extends AppCompatActivity {
                     categoryRecipeList.addAll(updatedList);
                     categoryRecipeAdapter.updateList(updatedList);
                     categoryRecipeAdapter.setLoading(false);
-                    if (newRecipes.isEmpty()) {
-                        Toast.makeText(HomeActivity.this, "No more " + selectedCategory + " recipes", Toast.LENGTH_SHORT).show();
-                    }
                 });
             } else {
                 runOnUiThread(() -> {
                     categoryRecipeAdapter.setLoading(false);
-                    Toast.makeText(HomeActivity.this, "Error loading " + selectedCategory + " recipes", Toast.LENGTH_SHORT).show();
                 });
             }
             isLoadingCategory = false;
@@ -267,14 +263,10 @@ public class HomeActivity extends AppCompatActivity {
                     allRecipesList.addAll(updatedList);
                     allRecipesAdapter.updateList(updatedList);
                     allRecipesAdapter.setLoading(false);
-                    if (newRecipes.isEmpty()) {
-                        Toast.makeText(HomeActivity.this, "No more recipes to load", Toast.LENGTH_SHORT).show();
-                    }
                 });
             } else {
                 runOnUiThread(() -> {
                     allRecipesAdapter.setLoading(false);
-                    Toast.makeText(HomeActivity.this, "Error loading recipes", Toast.LENGTH_SHORT).show();
                 });
             }
             isLoadingAllRecipes = false;

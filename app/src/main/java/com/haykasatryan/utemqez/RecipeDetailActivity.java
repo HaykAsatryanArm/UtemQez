@@ -214,7 +214,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
                             errorMessage = "Speech recognition error: " + error;
                     }
                     Log.e(TAG, "Speech recognition error: " + errorMessage);
-                    Toast.makeText(RecipeDetailActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
                     if (error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS &&
                             ContextCompat.checkSelfPermission(RecipeDetailActivity.this, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                         speechRecognizer.startListening(recognizerIntent);
@@ -230,7 +229,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
                     if (matches != null && !matches.isEmpty()) {
                         String command = matches.get(0).toLowerCase();
                         Log.d(TAG, "Recognized command: " + command + ", matches: " + matches);
-                        Toast.makeText(RecipeDetailActivity.this, "Heard: " + command, Toast.LENGTH_SHORT).show();
                         if (command.contains("next") || command.contains("neck") || command.contains("text") || command.contains("continue")) {
                             readNextInstruction();
                             commandRecognized = true;

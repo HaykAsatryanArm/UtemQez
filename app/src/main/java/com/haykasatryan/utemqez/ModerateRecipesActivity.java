@@ -27,7 +27,6 @@ public class ModerateRecipesActivity extends AppCompatActivity {
             Log.d("ModerateRecipes", "Activity created, layout set");
         } catch (Exception e) {
             Log.e("ModerateRecipes", "Error setting content view", e);
-            Toast.makeText(this, "Error initializing activity", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -43,7 +42,6 @@ public class ModerateRecipesActivity extends AppCompatActivity {
             Log.d("ModerateRecipes", "Adapter and listeners set");
         } catch (Exception e) {
             Log.e("ModerateRecipes", "Error initializing adapter", e);
-            Toast.makeText(this, "Error setting up recipe list", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -94,7 +92,6 @@ public class ModerateRecipesActivity extends AppCompatActivity {
                         Log.d("ModerateRecipes", "Adapter updated with " + recipeList.size() + " recipes");
                     } catch (Exception e) {
                         Log.e("ModerateRecipes", "Error updating adapter", e);
-                        Toast.makeText(this, "Error displaying recipes", Toast.LENGTH_SHORT).show();
                     }
                     findViewById(R.id.noRecipesText).setVisibility(recipeList.isEmpty() ? View.VISIBLE : View.GONE);
                     if (recipeList.isEmpty()) {
@@ -103,7 +100,6 @@ public class ModerateRecipesActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     Log.e("ModerateRecipes", "Error loading recipes", e);
-                    Toast.makeText(this, "Error loading recipes: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -118,7 +114,6 @@ public class ModerateRecipesActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     Log.e("ModerateRecipes", "Error approving recipe: " + recipe.getUserId(), e);
-                    Toast.makeText(this, "Error approving recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -133,7 +128,6 @@ public class ModerateRecipesActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     Log.e("ModerateRecipes", "Error deleting recipe: " + recipe.getUserId(), e);
-                    Toast.makeText(this, "Error deleting recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
 }

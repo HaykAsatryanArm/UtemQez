@@ -44,7 +44,6 @@ public class LikedRecipesActivity extends AppCompatActivity {
         likedRecipesRecyclerView = findViewById(R.id.likedRecipesRecyclerView);
         if (likedRecipesRecyclerView == null) {
             Log.e("LikedRecipesActivity", "RecyclerView not found in layout");
-            Toast.makeText(this, "Error: RecyclerView not found", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
@@ -118,26 +117,19 @@ public class LikedRecipesActivity extends AppCompatActivity {
                                         }
                                         Log.d("LikedRecipesActivity", "Recipes added: " + likedRecipesList.size());
                                         likedRecipesAdapter.notifyDataSetChanged();
-                                        if (likedRecipesList.isEmpty()) {
-                                            Toast.makeText(this, "No liked recipes found", Toast.LENGTH_SHORT).show();
-                                        }
                                     } else {
-                                        Toast.makeText(this, "Error loading liked recipes", Toast.LENGTH_SHORT).show();
                                         Log.e("LikedRecipesActivity", "Firestore error", task.getException());
                                     }
                                 })
                                 .addOnFailureListener(e -> {
-                                    Toast.makeText(this, "Error loading recipes", Toast.LENGTH_SHORT).show();
                                     Log.e("LikedRecipesActivity", "Firestore query failed", e);
                                     likedRecipesAdapter.notifyDataSetChanged();
                                 });
                     } else {
-                        Toast.makeText(this, "No liked recipes found", Toast.LENGTH_SHORT).show();
                         likedRecipesAdapter.notifyDataSetChanged();
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Error fetching user data", Toast.LENGTH_SHORT).show();
                     Log.e("LikedRecipesActivity", "Error fetching user data", e);
                     likedRecipesAdapter.notifyDataSetChanged();
                 });
