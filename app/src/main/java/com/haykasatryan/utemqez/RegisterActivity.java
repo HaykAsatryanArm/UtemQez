@@ -65,7 +65,7 @@ public class RegisterActivity extends AppCompatActivity {
                 userPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
                 userPassword.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_eye, 0);
             }
-            userPassword.setSelection(userPassword.getText().length()); // Keep cursor at end
+            userPassword.setSelection(userPassword.getText().length());
         });
 
         setupPasswordToggle(userPasswordRe, () -> {
@@ -77,7 +77,7 @@ public class RegisterActivity extends AppCompatActivity {
                 userPasswordRe.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
                 userPasswordRe.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_eye, 0);
             }
-            userPasswordRe.setSelection(userPasswordRe.getText().length()); // Keep cursor at end
+            userPasswordRe.setSelection(userPasswordRe.getText().length());
         });
     }
 
@@ -159,8 +159,8 @@ public class RegisterActivity extends AppCompatActivity {
         userData.put("email", email);
         userData.put("profilePicture", "");
         userData.put("createdAt", FieldValue.serverTimestamp());
-        userData.put("isAdmin", false); // Add isAdmin field, default to false
-        userData.put("likedRecipes", new ArrayList<String>()); // Initialize likedRecipes
+        userData.put("isAdmin", false);
+        userData.put("likedRecipes", new ArrayList<String>());
 
         db.collection("users").document(user.getUid())
                 .set(userData)

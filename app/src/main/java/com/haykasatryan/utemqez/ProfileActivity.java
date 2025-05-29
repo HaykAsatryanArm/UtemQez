@@ -54,8 +54,6 @@ public class ProfileActivity extends AppCompatActivity {
     private ImageView profileImage;
     private Button btnLogout, btnAddNewRecipe;
     private Cloudinary cloudinary;
-
-    // Dialog-related fields
     private Dialog recipeDialog;
     private Button btnSelectImage, btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe;
     private EditText recipeTitle, recipeTime;
@@ -64,7 +62,6 @@ public class ProfileActivity extends AppCompatActivity {
     private EditText nutritionCalories, nutritionProtein, nutritionFat, nutritionCarbs;
     private String recipeImageUrl = "";
 
-    // RecyclerView for user's recipes
     private RecyclerView userRecipesRecyclerView;
     private RecipeAdapter userRecipesAdapter;
     private final List<Recipe> userRecipesList = new ArrayList<>();
@@ -91,23 +88,20 @@ public class ProfileActivity extends AppCompatActivity {
                 "api_secret", "tPtmtB9HaZ7pTv6dn7lEJJssOh0"
         ));
 
-        // Initialize RecyclerView
         userRecipesRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         userRecipesAdapter = new RecipeAdapter(userRecipesList, R.layout.recipe_item_search);
         userRecipesRecyclerView.setAdapter(userRecipesAdapter);
 
-        // Set delete listener
         userRecipesAdapter.setOnDeleteClickListener(this::showDeleteConfirmationDialog);
 
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             userName.setText(user.getDisplayName() != null ? user.getDisplayName() : "User");
             userEmail.setText(user.getEmail());
-            initializeUserDocument(user); // Ensure user document exists
+            initializeUserDocument(user);
             loadProfilePicture(user.getEmail());
             fetchUserRecipes(user.getUid());
 
-            // Check if user is admin
             db.collection("users").document(user.getUid()).get()
                     .addOnSuccessListener(documentSnapshot -> {
                         Boolean isAdmin = documentSnapshot.getBoolean("isAdmin");
@@ -135,7 +129,6 @@ public class ProfileActivity extends AppCompatActivity {
         String userId = user.getUid();
 
         Map<String, Object> userData = new HashMap<>();
-        // Only add fields that should be updated if they're missing
         if (user.getEmail() != null) {
             userData.put("email", user.getEmail());
         }
@@ -143,8 +136,6 @@ public class ProfileActivity extends AppCompatActivity {
             userData.put("displayName", user.getDisplayName());
         }
 
-        // Note: We're not touching isAdmin here at all
-        // Only set if the document doesn't exist
         db.collection("users").document(userId)
                 .set(userData, SetOptions.mergeFields("email", "displayName"))
                 .addOnSuccessListener(aVoid -> Log.d(TAG, "User document initialized for: " + userId))
@@ -170,7 +161,6 @@ public class ProfileActivity extends AppCompatActivity {
                                 recipe.setCategory((List<String>) document.get("category"));
                                 recipe.setUserId(document.getString("userId"));
 
-                                // Convert ingredients
                                 List<Map<String, String>> rawIngredients = (List<Map<String, String>>) document.get("ingredients");
                                 List<Ingredient> ingredients = new ArrayList<>();
                                 if (rawIngredients != null) {
@@ -183,7 +173,6 @@ public class ProfileActivity extends AppCompatActivity {
                                 }
                                 recipe.setIngredients(ingredients);
 
-                                // Convert nutrition
                                 Map<String, String> rawNutrition = (Map<String, String>) document.get("nutrition");
                                 Nutrition nutrition = new Nutrition();
                                 if (rawNutrition != null) {

@@ -187,7 +187,7 @@ public class HomeActivity extends AppCompatActivity {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         Query query = db.collection("recipes")
                 .whereArrayContains("category", selectedCategory)
-                .whereEqualTo("isApproved", true) // Only approved recipes
+                .whereEqualTo("isApproved", true)
                 .limit(PAGE_SIZE);
 
         if (lastCategoryDoc != null) {
@@ -234,7 +234,7 @@ public class HomeActivity extends AppCompatActivity {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         Query query = db.collection("recipes")
-                .whereEqualTo("isApproved", true) // Only approved recipes
+                .whereEqualTo("isApproved", true)
                 .limit(PAGE_SIZE);
         if (lastAllRecipesDoc != null) {
             query = query.startAfter(lastAllRecipesDoc);

@@ -33,7 +33,6 @@ public class FirestoreUploader {
 
     public FirestoreUploader() {
         try {
-            // Initialize Firestore and FirebaseStorage
             db = FirebaseFirestore.getInstance();
             storage = FirebaseStorage.getInstance();
             Log.d(TAG, "Firestore and FirebaseStorage initialized successfully");
@@ -42,7 +41,6 @@ public class FirestoreUploader {
         }
     }
 
-    // READ JSON FILE
     private String loadJSONFromAsset(Context context, String fileName) {
         try {
             InputStream is = context.getAssets().open(fileName);
@@ -57,10 +55,7 @@ public class FirestoreUploader {
         }
     }
 
-    // Upload data from JSON to Firestore
     public void uploadJSONToFirestore(Context context, String fileName) {
-        // Step 1: Load the JSON from assets
-
         String jsonString = loadJSONFromAsset(context, fileName);
         if (jsonString == null) {
             Log.e(TAG, "Failed to load JSON file");
@@ -75,7 +70,7 @@ public class FirestoreUploader {
 
                 Map<String, Object> recipeData = new HashMap<>();
 
-                recipeData.put("id", jsonObject.optInt("id", -1)); // Default value if not present
+                recipeData.put("id", jsonObject.optInt("id", -1));
                 recipeData.put("title", jsonObject.optString("title", ""));
                 recipeData.put("readyInMinutes", jsonObject.optInt("readyInMinutes", 0));
                 recipeData.put("sourceUrl", jsonObject.optString("sourceUrl", ""));
@@ -94,7 +89,6 @@ public class FirestoreUploader {
                     recipeData.put("ingredients", ingredientsList);
                 }
 
-                // Extract nutrition (map of values)
                 JSONObject nutritionObj = jsonObject.optJSONObject("nutrition");
                 if (nutritionObj != null) {
                     Map<String, String> nutritionMap = new HashMap<>();
@@ -105,7 +99,6 @@ public class FirestoreUploader {
                     recipeData.put("nutrition", nutritionMap);
                 }
 
-                // Extract categories (list of strings)
                 JSONArray categoryArray = jsonObject.optJSONArray("category");
                 if (categoryArray != null) {
                     List<String> categoryList = new ArrayList<>();
@@ -115,10 +108,8 @@ public class FirestoreUploader {
                     recipeData.put("category", categoryList);
                 }
 
-                // Extract image URL
                 recipeData.put("imageUrl", jsonObject.optString("imageUrl", ""));
 
-                // Step 4: Push data into Firestore
                 String documentId = String.valueOf(jsonObject.optInt("id", -1));
                 if (documentId.equals("-1")) {
                     Log.e(TAG, "Invalid recipe ID, skipping this recipe");
@@ -136,10 +127,8 @@ public class FirestoreUploader {
         }
     }
 
-    // Test Firestore initialization and connectivity
     public void checkFirestoreInitialization() {
         try {
-            // Fetch a simple document or collection to check connectivity
             db.collection("test").limit(1).get()
                     .addOnSuccessListener(queryDocumentSnapshots -> Log.d(TAG, "Firestore is initialized and connected"))
                     .addOnFailureListener(e -> Log.e(TAG, "Firestore initialization failed: " + e.getMessage()));

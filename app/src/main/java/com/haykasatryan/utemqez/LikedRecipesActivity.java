@@ -40,7 +40,6 @@ public class LikedRecipesActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        // Initialize views
         likedRecipesRecyclerView = findViewById(R.id.likedRecipesRecyclerView);
         if (likedRecipesRecyclerView == null) {
             Log.e("LikedRecipesActivity", "RecyclerView not found in layout");
@@ -48,13 +47,11 @@ public class LikedRecipesActivity extends AppCompatActivity {
             return;
         }
 
-        // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         likedRecipesRecyclerView.setLayoutManager(layoutManager);
         likedRecipesAdapter = new RecipeAdapter(likedRecipesList, R.layout.recipe_item_search);
         likedRecipesRecyclerView.setAdapter(likedRecipesAdapter);
 
-        // Profile button click listener
         View profileButton = findViewById(R.id.nav_profile);
         if (profileButton != null) {
             profileButton.setOnClickListener(v -> {
@@ -68,7 +65,6 @@ public class LikedRecipesActivity extends AppCompatActivity {
             Log.w("LikedRecipesActivity", "Profile button not found in layout");
         }
 
-        // Close button click listener
         View closeButton = findViewById(R.id.nav_close);
         if (closeButton != null) {
             closeButton.setOnClickListener(v -> {

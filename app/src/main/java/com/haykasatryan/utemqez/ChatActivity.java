@@ -48,13 +48,10 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_chat);
 
-        // Set keyboard handling mode
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 
-        // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
 
-        // Initialize views
         TextView headerTitle = findViewById(R.id.header_title);
         ImageButton profileButton = findViewById(R.id.nav_profile);
         closeButton = findViewById(R.id.closeButton);
@@ -62,18 +59,15 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
         messageInput = findViewById(R.id.messageInput);
         sendButton = findViewById(R.id.sendButton);
 
-        // Set up RecyclerView
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
         chatRecyclerView.setLayoutManager(layoutManager);
         chatAdapter = new ChatMessageAdapter(messageList);
         chatRecyclerView.setAdapter(chatAdapter);
 
-        // Initialize Gemini model
         GeminiPro geminiPro = new GeminiPro();
         chatModel = geminiPro.getModel().startChat();
 
-        // Set up authentication-based UI
         if (mAuth.getCurrentUser() != null) {
             String userName = mAuth.getCurrentUser().getDisplayName() != null ?
                     mAuth.getCurrentUser().getDisplayName() : mAuth.getCurrentUser().getEmail();
@@ -82,7 +76,6 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
             headerTitle.setText("Chat with AI");
         }
 
-        // Profile button click listener
         profileButton.setOnClickListener(v -> {
             if (mAuth.getCurrentUser() == null) {
                 startActivity(new Intent(ChatActivity.this, LoginActivity.class));
@@ -91,7 +84,6 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
             }
         });
 
-        // Close button click listener
         closeButton.setOnClickListener(v -> {
             Intent intent = new Intent(ChatActivity.this, HomeActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -99,7 +91,6 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
             finish();
         });
 
-        // Send button click listener
         sendButton.setOnClickListener(v -> {
             String message = messageInput.getText().toString().trim();
             if (!message.isEmpty()) {
@@ -111,7 +102,6 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
             }
         });
 
-        // Keyboard visibility listener
         final View rootView = findViewById(R.id.main);
         rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             Rect r = new Rect();
@@ -119,7 +109,7 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
             int screenHeight = rootView.getRootView().getHeight();
             int keypadHeight = screenHeight - r.bottom;
 
-            if (keypadHeight > screenHeight * 0.15) { // Keyboard is visible
+            if (keypadHeight > screenHeight * 0.15) {
                 chatRecyclerView.postDelayed(() -> {
                     if (messageList.size() > 0) {
                         chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
@@ -185,7 +175,6 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
     public void onBindViewHolder(MessageViewHolder holder, int position) {
         ChatMessage message = messageList.get(position);
 
-        // Format the text if it's an AI message, otherwise set it as plain text
         if (message.isUserMessage()) {
             holder.messageText.setText(message.getText());
         } else {
@@ -193,7 +182,6 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
             holder.messageText.setText(formattedText);
         }
 
-        // Adjust alignment and background based on message type
         if (message.isUserMessage()) {
             holder.messageText.setBackgroundResource(R.drawable.chat_message_background_user);
             holder.messageText.setTextColor(holder.itemView.getContext().getResources().getColor(R.color.white));
@@ -211,54 +199,42 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
         }
     }
 
-    // Helper method to format AI responses with Markdown-like syntax
     private SpannableStringBuilder formatMessageText(String text) {
         SpannableStringBuilder spannable = new SpannableStringBuilder();
 
-        // Split the text into lines
         String[] lines = text.split("\n");
         int currentPosition = 0;
 
         for (String line : lines) {
             if (currentPosition > 0) {
-                // Add a newline between lines
                 spannable.append("\n");
                 currentPosition++;
             }
 
-            // Check for bullet points (lines starting with "* ")
             if (line.startsWith("* ")) {
-                // Remove the "* " prefix and append the rest of the line
                 String bulletText = line.substring(2);
                 int lineStart = currentPosition;
                 spannable.append(bulletText);
                 int lineEnd = currentPosition + bulletText.length();
-                // Apply BulletSpan to the entire line
                 spannable.setSpan(new BulletSpan(15), lineStart, lineEnd, SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE);
                 currentPosition = lineEnd;
             }
-            // Check for numbered lists (lines starting with "1. ", "2. ", etc.)
             else if (line.matches("\\d+\\.\\s+.*")) {
-                // Extract the number and the text (e.g., "1. Item" -> "1. " and "Item")
                 int dotIndex = line.indexOf(". ");
-                String numberText = line.substring(0, dotIndex + 2); // e.g., "1. "
-                String itemText = line.substring(dotIndex + 2); // e.g., "Item"
+                String numberText = line.substring(0, dotIndex + 2);
+                String itemText = line.substring(dotIndex + 2);
 
                 int lineStart = currentPosition;
                 spannable.append(numberText).append(itemText);
                 int lineEnd = currentPosition + numberText.length() + itemText.length();
-                // Apply LeadingMarginSpan to indent the text after the number
                 spannable.setSpan(new LeadingMarginSpan.Standard(30), lineStart, lineEnd, SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE);
                 currentPosition = lineEnd;
             }
             else {
-                // Handle bold (**text**) and italic (_text_) within the line
                 String remainingText = line;
                 int lastIndex = 0;
 
-                // Process bold and italic in a loop to handle nested or overlapping patterns
                 while (lastIndex < remainingText.length()) {
-                    // Find the next Markdown pattern (bold or italic)
                     Matcher boldMatcher = Pattern.compile("\\*\\*(.+?)\\*\\*").matcher(remainingText);
                     Matcher italicMatcher = Pattern.compile("_(.+?)_").matcher(remainingText);
 
@@ -266,16 +242,13 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
                     int nextItalicStart = italicMatcher.find(lastIndex) ? italicMatcher.start() : Integer.MAX_VALUE;
 
                     if (nextBoldStart == Integer.MAX_VALUE && nextItalicStart == Integer.MAX_VALUE) {
-                        // No more Markdown patterns, append the remaining text
                         String plainText = remainingText.substring(lastIndex);
                         spannable.append(plainText);
                         currentPosition += plainText.length();
                         break;
                     }
 
-                    // Determine which pattern comes first
                     if (nextBoldStart < nextItalicStart) {
-                        // Process bold text
                         String beforeBold = remainingText.substring(lastIndex, nextBoldStart);
                         spannable.append(beforeBold);
                         currentPosition += beforeBold.length();
@@ -289,7 +262,6 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
 
                         lastIndex = boldMatcher.end();
                     } else {
-                        // Process italic text
                         String beforeItalic = remainingText.substring(lastIndex, nextItalicStart);
                         spannable.append(beforeItalic);
                         currentPosition += beforeItalic.length();

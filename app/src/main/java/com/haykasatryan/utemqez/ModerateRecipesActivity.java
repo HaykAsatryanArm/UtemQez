@@ -77,7 +77,6 @@ public class ModerateRecipesActivity extends AppCompatActivity {
                                 Log.w("ModerateRecipes", "No id field for recipe: " + document.getId() + ", using default ID");
                                 recipe.setId(0);
                             }
-                            // Validate recipe data
                             if (recipe.getTitle() == null) recipe.setTitle("Untitled");
                             if (recipe.getImageUrl() == null) recipe.setImageUrl("");
                             if (recipe.getIngredients() == null) recipe.setIngredients(new ArrayList<>());

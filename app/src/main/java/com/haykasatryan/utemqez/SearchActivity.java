@@ -130,7 +130,7 @@ public class SearchActivity extends AppCompatActivity {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         Query firestoreQuery = db.collection("recipes")
-                .whereEqualTo("isApproved", true) // Only approved recipes
+                .whereEqualTo("isApproved", true)
                 .limit(PAGE_SIZE);
 
         if (lastSearchDoc != null) {

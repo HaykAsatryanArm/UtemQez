@@ -26,14 +26,12 @@ public class AdminDashboardActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
-        // Initialize views
         adminTitle = findViewById(R.id.adminTitle);
         btnManageUsers = findViewById(R.id.btnManageUsers);
         btnModerateRecipes = findViewById(R.id.btnModerateRecipes);
         btnViewAnalytics = findViewById(R.id.btnViewAnalytics);
         btnBack = findViewById(R.id.btnBack);
 
-        // Check if user is admin
         if (mAuth.getCurrentUser() != null) {
             String userId = mAuth.getCurrentUser().getUid();
             db.collection("users").document(userId).get()
@@ -62,7 +60,6 @@ public class AdminDashboardActivity extends AppCompatActivity {
             finish();
         }
 
-        // Button click listeners
         btnManageUsers.setOnClickListener(v -> startActivity(new Intent(this, ManageUsersActivity.class)));
         btnModerateRecipes.setOnClickListener(v -> startActivity(new Intent(this, ModerateRecipesActivity.class)));
         btnViewAnalytics.setOnClickListener(v -> startActivity(new Intent(this, AnalyticsActivity.class)));

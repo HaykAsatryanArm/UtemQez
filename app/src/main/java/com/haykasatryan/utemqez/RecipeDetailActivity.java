@@ -53,13 +53,11 @@ public class RecipeDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_recipe_detail);
 
-        // Configure audio settings
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, 0, 0);
         int maxMediaVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxMediaVolume, 0);
 
-        // Initialize views
         detailRecipeTitle = findViewById(R.id.detailRecipeTitle);
         detailReadyInMinutes = findViewById(R.id.detailReadyInMinutes);
         detailIngredients = findViewById(R.id.detailIngredients);
@@ -76,7 +74,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
         voiceButton = findViewById(R.id.voiceButton);
         Button closeButton = findViewById(R.id.closeButton);
 
-        // Get recipe from intent
         recipe = getIntent().getParcelableExtra("recipe");
         if (recipe == null) {
             Log.e(TAG, "No recipe provided in intent");
@@ -85,11 +82,9 @@ public class RecipeDetailActivity extends AppCompatActivity {
             return;
         }
 
-        // Populate views
         detailRecipeTitle.setText(recipe.getTitle() != null ? recipe.getTitle() : "Untitled");
         detailReadyInMinutes.setText(recipe.getReadyInMinutes() > 0 ? recipe.getReadyInMinutes() + " Min" : "N/A");
 
-        // Load image with Glide, ensuring HTTPS
         String imageUrl = recipe.getImageUrl();
         RequestOptions options = new RequestOptions()
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -106,7 +101,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
             detailRecipeImage.setImageResource(R.drawable.recipe_image);
         }
 
-        // Populate nutrition
         Nutrition nutrition = recipe.getNutrition();
         if (nutrition != null) {
             caloriesText.setText(nutrition.getCalories() != null ? nutrition.getCalories() : "N/A");
@@ -121,7 +115,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
             carbsText.setText("N/A");
         }
 
-        // Populate ingredients
         List<Ingredient> ingredients = recipe.getIngredients();
         if (ingredients != null && !ingredients.isEmpty()) {
             StringBuilder ingredientsText = new StringBuilder();
@@ -138,7 +131,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
             detailIngredients.setText("No ingredients available");
         }
 
-        // Parse and display instructions
         instructionSteps = parseInstructions(recipe.getInstructions());
         StringBuilder instructionsText = new StringBuilder();
         for (String step : instructionSteps) {
@@ -146,11 +138,9 @@ public class RecipeDetailActivity extends AppCompatActivity {
         }
         detailInstructions.setText(instructionsText.length() > 0 ? instructionsText.toString().trim() : "No instructions available");
 
-        // Toggle content visibility
         ingredientsHeader.setOnClickListener(v -> toggleContent(true));
         instructionsHeader.setOnClickListener(v -> toggleContent(false));
 
-        // Initialize TextToSpeech
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
                 textToSpeech.setLanguage(Locale.US);
@@ -161,7 +151,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
             }
         });
 
-        // Initialize SpeechRecognizer
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
         recognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -264,7 +253,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
             public void onEvent(int eventType, Bundle params) {}
         });
 
-        // Voice button to start/stop voice mode
         voiceButton.setOnClickListener(v -> {
             if (!isVoiceModeActive) {
                 if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -278,7 +266,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
             }
         });
 
-        // Close button
         closeButton.setOnClickListener(v -> finish());
     }
 

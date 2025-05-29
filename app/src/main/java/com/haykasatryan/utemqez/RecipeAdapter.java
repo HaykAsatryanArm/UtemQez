@@ -304,8 +304,8 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 viewDetailsButton = itemView.findViewById(R.id.viewDetailsButton);
                 likeButton = itemView.findViewById(R.id.likeButton);
                 likesCount = itemView.findViewById(R.id.likesCount);
-                deleteButton = itemView.findViewById(R.id.deleteButton); // May be null
-                approveButton = itemView.findViewById(R.id.approveButton); // May be null
+                deleteButton = itemView.findViewById(R.id.deleteButton);
+                approveButton = itemView.findViewById(R.id.approveButton);
             } catch (Exception e) {
                 Log.e("RecipeViewHolder", "Error initializing views for layout: " + itemView.getResources().getResourceName(itemView.getId()), e);
                 throw new RuntimeException("Failed to initialize RecipeViewHolder views", e);
