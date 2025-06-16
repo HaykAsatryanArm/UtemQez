@@ -3,12 +3,22 @@ package com.haykasatryan.utemqez;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.media.AudioManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -34,6 +44,8 @@ import java.util.regex.Pattern;
 public class RecipeDetailActivity extends AppCompatActivity {
     private static final String TAG = "RecipeDetailActivity";
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
+    private static final long COMMAND_DEBOUNCE_TIME = 1000; // 1 second debounce time
+
     private Recipe recipe;
     private TextView detailRecipeTitle, detailReadyInMinutes, detailIngredients, detailInstructions;
     private TextView ingredientsHeader, instructionsHeader;
@@ -44,20 +56,52 @@ public class RecipeDetailActivity extends AppCompatActivity {
     private TextToSpeech textToSpeech;
     private SpeechRecognizer speechRecognizer;
     private Intent recognizerIntent;
-    private List<String> instructionSteps;
+    private List<InstructionStep> instructionSteps;
     private int currentInstructionIndex = -1;
     private boolean isVoiceModeActive = false;
+    private long lastCommandTime = 0;
+    private Handler handler = new Handler();
+
+    private static class InstructionStep {
+        String originalText;
+        String displayText;
+        String numberedText;
+
+        InstructionStep(String originalText, String displayText, String numberedText) {
+            this.originalText = originalText;
+            this.displayText = displayText;
+            this.numberedText = numberedText;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_recipe_detail);
 
+        // Audio setup
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, 0, 0);
         int maxMediaVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxMediaVolume, 0);
 
+        initializeViews();
+
+        recipe = getIntent().getParcelableExtra("recipe");
+        if (recipe == null) {
+            Log.e(TAG, "No recipe provided in intent");
+            Toast.makeText(this, "Error loading recipe", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        setupRecipeData();
+        initializeTextToSpeech();
+        initializeSpeechRecognizer();
+        setupClickListeners();
+    }
+
+    private void initializeViews() {
         detailRecipeTitle = findViewById(R.id.detailRecipeTitle);
         detailReadyInMinutes = findViewById(R.id.detailReadyInMinutes);
         detailIngredients = findViewById(R.id.detailIngredients);
@@ -74,17 +118,14 @@ public class RecipeDetailActivity extends AppCompatActivity {
         voiceButton = findViewById(R.id.voiceButton);
         Button closeButton = findViewById(R.id.closeButton);
 
-        recipe = getIntent().getParcelableExtra("recipe");
-        if (recipe == null) {
-            Log.e(TAG, "No recipe provided in intent");
-            Toast.makeText(this, "Error loading recipe", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
+        closeButton.setOnClickListener(v -> finish());
+    }
 
+    private void setupRecipeData() {
         detailRecipeTitle.setText(recipe.getTitle() != null ? recipe.getTitle() : "Untitled");
         detailReadyInMinutes.setText(recipe.getReadyInMinutes() > 0 ? recipe.getReadyInMinutes() + " Min" : "N/A");
 
+        // Load recipe image
         String imageUrl = recipe.getImageUrl();
         RequestOptions options = new RequestOptions()
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -101,6 +142,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
             detailRecipeImage.setImageResource(R.drawable.recipe_image);
         }
 
+        // Set nutrition data
         Nutrition nutrition = recipe.getNutrition();
         if (nutrition != null) {
             caloriesText.setText(nutrition.getCalories() != null ? nutrition.getCalories() : "N/A");
@@ -115,6 +157,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
             carbsText.setText("N/A");
         }
 
+        // Set ingredients
         List<Ingredient> ingredients = recipe.getIngredients();
         if (ingredients != null && !ingredients.isEmpty()) {
             StringBuilder ingredientsText = new StringBuilder();
@@ -131,26 +174,89 @@ public class RecipeDetailActivity extends AppCompatActivity {
             detailIngredients.setText("No ingredients available");
         }
 
+        // Parse and set instructions
         instructionSteps = parseInstructions(recipe.getInstructions());
-        StringBuilder instructionsText = new StringBuilder();
-        for (String step : instructionSteps) {
-            instructionsText.append(step).append("\n");
+        SpannableStringBuilder instructionsBuilder = new SpannableStringBuilder();
+        for (InstructionStep step : instructionSteps) {
+            instructionsBuilder.append(step.numberedText).append("\n");
         }
-        detailInstructions.setText(instructionsText.length() > 0 ? instructionsText.toString().trim() : "No instructions available");
+        detailInstructions.setText(instructionsBuilder);
+    }
 
-        ingredientsHeader.setOnClickListener(v -> toggleContent(true));
-        instructionsHeader.setOnClickListener(v -> toggleContent(false));
+    private List<InstructionStep> parseInstructions(String instructions) {
+        List<InstructionStep> result = new ArrayList<>();
+        if (instructions == null || instructions.trim().isEmpty()) {
+            return result;
+        }
 
+        Pattern pattern = Pattern.compile("(\\d+\\..*?)(?=\\d+\\.|$)", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(instructions);
+        while (matcher.find()) {
+            String step = matcher.group(1).trim();
+            if (!step.isEmpty()) {
+                if (!step.endsWith(".")) {
+                    step += ".";
+                }
+                // Keep the numbering for display
+                String displayText = step.replaceFirst("^\\d+\\.\\s*", "");
+                result.add(new InstructionStep(step, displayText, step));
+            }
+        }
+
+        if (result.isEmpty()) {
+            String[] steps = instructions.split("\\s*\\d+\\.[\\s]*");
+            for (int i = 0; i < steps.length; i++) {
+                String step = steps[i].trim();
+                if (!step.isEmpty()) {
+                    if (!step.endsWith(".")) {
+                        step += ".";
+                    }
+                    // Add numbering if it wasn't present
+                    String numberedText = (i+1) + ". " + step;
+                    result.add(new InstructionStep(numberedText, step, numberedText));
+                }
+            }
+        }
+        return result;
+    }
+
+    private void initializeTextToSpeech() {
         textToSpeech = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
                 textToSpeech.setLanguage(Locale.US);
+                textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    @Override
+                    public void onStart(String utteranceId) {
+                        Log.d(TAG, "TTS started: " + utteranceId);
+                    }
+
+                    @Override
+                    public void onDone(String utteranceId) {
+                        Log.d(TAG, "TTS completed: " + utteranceId);
+                        if (isVoiceModeActive) {
+                            handler.postDelayed(() -> {
+                                if (ContextCompat.checkSelfPermission(RecipeDetailActivity.this,
+                                        android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                    speechRecognizer.startListening(recognizerIntent);
+                                }
+                            }, 300);
+                        }
+                    }
+
+                    @Override
+                    public void onError(String utteranceId) {
+                        Log.e(TAG, "TTS error: " + utteranceId);
+                    }
+                });
                 Log.d(TAG, "TextToSpeech initialized successfully");
             } else {
                 Log.e(TAG, "TextToSpeech initialization failed: status " + status);
                 Toast.makeText(this, "Text-to-Speech initialization failed", Toast.LENGTH_SHORT).show();
             }
         });
+    }
 
+    private void initializeSpeechRecognizer() {
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
         recognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -204,47 +310,41 @@ public class RecipeDetailActivity extends AppCompatActivity {
                     }
                     Log.e(TAG, "Speech recognition error: " + errorMessage);
                     if (error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS &&
-                            ContextCompat.checkSelfPermission(RecipeDetailActivity.this, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                        speechRecognizer.startListening(recognizerIntent);
+                            ContextCompat.checkSelfPermission(RecipeDetailActivity.this,
+                                    android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        handler.postDelayed(() -> speechRecognizer.startListening(recognizerIntent), 500);
                     }
                 }
             }
 
             @Override
             public void onResults(Bundle results) {
-                if (isVoiceModeActive) {
-                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    boolean commandRecognized = false;
-                    if (matches != null && !matches.isEmpty()) {
-                        String command = matches.get(0).toLowerCase();
-                        Log.d(TAG, "Recognized command: " + command + ", matches: " + matches);
-                        if (command.contains("next") || command.contains("neck") || command.contains("text") || command.contains("continue")) {
-                            readNextInstruction();
-                            commandRecognized = true;
-                        }
+                if (!isVoiceModeActive) return;
+
+                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (matches != null && !matches.isEmpty()) {
+                    String command = matches.get(0).toLowerCase();
+                    Log.d(TAG, "Recognized command: " + command);
+                    if (command.contains("next") || command.contains("continue")) {
+                        handler.post(() -> handleVoiceCommand());
                     } else {
-                        Log.d(TAG, "No speech matches recognized");
+                        restartListening();
                     }
-                    if (!commandRecognized &&
-                            ContextCompat.checkSelfPermission(RecipeDetailActivity.this, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                        speechRecognizer.startListening(recognizerIntent);
-                    }
+                } else {
+                    restartListening();
                 }
             }
 
             @Override
             public void onPartialResults(Bundle partialResults) {
-                if (isVoiceModeActive) {
-                    ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    if (matches != null && !matches.isEmpty()) {
-                        String command = matches.get(0).toLowerCase();
-                        Log.d(TAG, "Partial command: " + command + ", matches: " + matches);
-                        if (command.contains("next") || command.contains("neck") || command.contains("text") || command.contains("continue")) {
-                            readNextInstruction();
-                            if (ContextCompat.checkSelfPermission(RecipeDetailActivity.this, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                                speechRecognizer.startListening(recognizerIntent);
-                            }
-                        }
+                if (!isVoiceModeActive) return;
+
+                ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (matches != null && !matches.isEmpty()) {
+                    String command = matches.get(0).toLowerCase();
+                    Log.d(TAG, "Partial command: " + command);
+                    if (command.contains("next") || command.contains("continue")) {
+                        handler.post(() -> handleVoiceCommand());
                     }
                 }
             }
@@ -252,6 +352,11 @@ public class RecipeDetailActivity extends AppCompatActivity {
             @Override
             public void onEvent(int eventType, Bundle params) {}
         });
+    }
+
+    private void setupClickListeners() {
+        ingredientsHeader.setOnClickListener(v -> toggleContent(true));
+        instructionsHeader.setOnClickListener(v -> toggleContent(false));
 
         voiceButton.setOnClickListener(v -> {
             if (!isVoiceModeActive) {
@@ -265,24 +370,125 @@ public class RecipeDetailActivity extends AppCompatActivity {
                 stopVoiceMode();
             }
         });
+    }
 
-        closeButton.setOnClickListener(v -> finish());
+    private void handleVoiceCommand() {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastCommandTime < COMMAND_DEBOUNCE_TIME) {
+            Log.d(TAG, "Command ignored - too soon after last command");
+            return;
+        }
+        lastCommandTime = currentTime;
+
+        try {
+            speechRecognizer.stopListening();
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping speech recognizer", e);
+        }
+
+        readNextInstruction();
+    }
+
+    private void readNextInstruction() {
+        Log.d(TAG, "readNextInstruction: currentIndex=" + currentInstructionIndex);
+        if (textToSpeech.isSpeaking()) {
+            Log.d(TAG, "TTS is already speaking, skipping");
+            return;
+        }
+
+        if (currentInstructionIndex + 1 < instructionSteps.size()) {
+            // Reset previous highlighting
+            resetAllStepHighlights();
+
+            currentInstructionIndex++;
+            InstructionStep step = instructionSteps.get(currentInstructionIndex);
+            Log.d(TAG, "Speaking step " + currentInstructionIndex + ": " + step.originalText);
+
+            // Highlight the current step in the instructions text
+            highlightCurrentStep(currentInstructionIndex);
+
+            Bundle params = new Bundle();
+            params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "step" + currentInstructionIndex);
+            textToSpeech.speak(step.originalText, TextToSpeech.QUEUE_FLUSH, params, "step" + currentInstructionIndex);
+        } else {
+            Log.d(TAG, "No more instructions");
+            textToSpeech.speak("No more instructions.", TextToSpeech.QUEUE_FLUSH, null, "end");
+            stopVoiceMode();
+        }
+    }
+
+    private void resetAllStepHighlights() {
+        SpannableStringBuilder builder = new SpannableStringBuilder();
+        for (InstructionStep step : instructionSteps) {
+            builder.append(step.numberedText).append("\n");
+        }
+        detailInstructions.setText(builder);
+    }
+
+    private void highlightCurrentStep(int index) {
+        SpannableStringBuilder builder = new SpannableStringBuilder();
+        for (int i = 0; i < instructionSteps.size(); i++) {
+            InstructionStep step = instructionSteps.get(i);
+            if (i == index) {
+                SpannableString highlighted = new SpannableString(step.numberedText);
+                highlighted.setSpan(new BackgroundColorSpan(ContextCompat.getColor(this, R.color.dark_teal)),
+                        0, highlighted.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                highlighted.setSpan(new ForegroundColorSpan(Color.WHITE),
+                        0, highlighted.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                highlighted.setSpan(new StyleSpan(Typeface.BOLD),
+                        0, highlighted.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                builder.append(highlighted);
+            } else {
+                builder.append(step.numberedText);
+            }
+            builder.append("\n");
+        }
+        detailInstructions.setText(builder);
+    }
+
+    private void restartListening() {
+        if (!isVoiceModeActive) return;
+
+        handler.post(() -> {
+            try {
+                if (ContextCompat.checkSelfPermission(this,
+                        android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    speechRecognizer.stopListening();
+                    speechRecognizer.startListening(recognizerIntent);
+                    Log.d(TAG, "Restarted listening");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error restarting speech recognizer", e);
+                handler.postDelayed(this::restartListening, 500);
+            }
+        });
     }
 
     private void startVoiceMode() {
         isVoiceModeActive = true;
         voiceButton.setText("Stop Voice Instructions");
         currentInstructionIndex = -1;
-        readNextInstruction();
-        speechRecognizer.startListening(recognizerIntent);
-        Toast.makeText(this, "Say 'Next' or 'Continue' to hear the next instruction", Toast.LENGTH_LONG).show();
+
+        // Start listening first
+        restartListening();
+
+        // Then read first instruction after a short delay
+        handler.postDelayed(this::readNextInstruction, 300);
+
+        Toast.makeText(this, "Say 'Next' or 'Continue' to hear the next instruction",
+                Toast.LENGTH_LONG).show();
     }
 
     private void stopVoiceMode() {
         isVoiceModeActive = false;
         voiceButton.setText("Start Voice Instructions");
-        speechRecognizer.stopListening();
+        try {
+            speechRecognizer.stopListening();
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping speech recognizer", e);
+        }
         textToSpeech.stop();
+        resetAllStepHighlights();
     }
 
     @Override
@@ -295,48 +501,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
                 Toast.makeText(this, "Microphone permission denied. Voice instructions unavailable.", Toast.LENGTH_LONG).show();
                 voiceButton.setEnabled(false);
             }
-        }
-    }
-
-    private List<String> parseInstructions(String instructions) {
-        if (instructions == null || instructions.trim().isEmpty()) {
-            return new ArrayList<>();
-        }
-        Pattern pattern = Pattern.compile("(\\d+\\..*?)(?=\\d+\\.|$)", Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(instructions);
-        List<String> result = new ArrayList<>();
-        while (matcher.find()) {
-            String step = matcher.group(1).trim();
-            if (!step.isEmpty()) {
-                if (!step.endsWith(".")) {
-                    step += ".";
-                }
-                result.add(step);
-            }
-        }
-        if (result.isEmpty()) {
-            String[] steps = instructions.split("\\s*\\d+\\.[\\s]*");
-            for (String step : steps) {
-                step = step.trim();
-                if (!step.isEmpty()) {
-                    if (!step.endsWith(".")) {
-                        step += ".";
-                    }
-                    result.add(step);
-                }
-            }
-        }
-        return result;
-    }
-
-    private void readNextInstruction() {
-        if (currentInstructionIndex + 1 < instructionSteps.size()) {
-            currentInstructionIndex++;
-            String step = instructionSteps.get(currentInstructionIndex);
-            textToSpeech.speak(step, TextToSpeech.QUEUE_FLUSH, null, null);
-        } else {
-            textToSpeech.speak("No more instructions.", TextToSpeech.QUEUE_FLUSH, null, null);
-            stopVoiceMode();
         }
     }
 
@@ -360,6 +524,7 @@ public class RecipeDetailActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
         if (textToSpeech != null) {
             textToSpeech.stop();
             textToSpeech.shutdown();

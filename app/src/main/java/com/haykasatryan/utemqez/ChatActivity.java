@@ -52,7 +52,6 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
 
         mAuth = FirebaseAuth.getInstance();
 
-        TextView headerTitle = findViewById(R.id.header_title);
         ImageButton profileButton = findViewById(R.id.nav_profile);
         closeButton = findViewById(R.id.closeButton);
         chatRecyclerView = findViewById(R.id.chatRecyclerView);
@@ -67,14 +66,6 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
 
         GeminiPro geminiPro = new GeminiPro();
         chatModel = geminiPro.getModel().startChat();
-
-        if (mAuth.getCurrentUser() != null) {
-            String userName = mAuth.getCurrentUser().getDisplayName() != null ?
-                    mAuth.getCurrentUser().getDisplayName() : mAuth.getCurrentUser().getEmail();
-            headerTitle.setText("Welcome, " + userName + "!");
-        } else {
-            headerTitle.setText("Chat with AI");
-        }
 
         profileButton.setOnClickListener(v -> {
             if (mAuth.getCurrentUser() == null) {
@@ -202,6 +193,9 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
     private SpannableStringBuilder formatMessageText(String text) {
         SpannableStringBuilder spannable = new SpannableStringBuilder();
 
+        // Remove all asterisks from the text
+        text = text.replaceAll("\\*", "");
+
         String[] lines = text.split("\n");
         int currentPosition = 0;
 
@@ -211,15 +205,7 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
                 currentPosition++;
             }
 
-            if (line.startsWith("* ")) {
-                String bulletText = line.substring(2);
-                int lineStart = currentPosition;
-                spannable.append(bulletText);
-                int lineEnd = currentPosition + bulletText.length();
-                spannable.setSpan(new BulletSpan(15), lineStart, lineEnd, SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE);
-                currentPosition = lineEnd;
-            }
-            else if (line.matches("\\d+\\.\\s+.*")) {
+            if (line.matches("\\d+\\.\\s+.*")) {
                 int dotIndex = line.indexOf(". ");
                 String numberText = line.substring(0, dotIndex + 2);
                 String itemText = line.substring(dotIndex + 2);
@@ -235,46 +221,29 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
                 int lastIndex = 0;
 
                 while (lastIndex < remainingText.length()) {
-                    Matcher boldMatcher = Pattern.compile("\\*\\*(.+?)\\*\\*").matcher(remainingText);
                     Matcher italicMatcher = Pattern.compile("_(.+?)_").matcher(remainingText);
 
-                    int nextBoldStart = boldMatcher.find(lastIndex) ? boldMatcher.start() : Integer.MAX_VALUE;
                     int nextItalicStart = italicMatcher.find(lastIndex) ? italicMatcher.start() : Integer.MAX_VALUE;
 
-                    if (nextBoldStart == Integer.MAX_VALUE && nextItalicStart == Integer.MAX_VALUE) {
+                    if (nextItalicStart == Integer.MAX_VALUE) {
                         String plainText = remainingText.substring(lastIndex);
                         spannable.append(plainText);
                         currentPosition += plainText.length();
                         break;
                     }
 
-                    if (nextBoldStart < nextItalicStart) {
-                        String beforeBold = remainingText.substring(lastIndex, nextBoldStart);
-                        spannable.append(beforeBold);
-                        currentPosition += beforeBold.length();
+                    String beforeItalic = remainingText.substring(lastIndex, nextItalicStart);
+                    spannable.append(beforeItalic);
+                    currentPosition += beforeItalic.length();
 
-                        String boldText = boldMatcher.group(1);
-                        int boldStart = currentPosition;
-                        spannable.append(boldText);
-                        int boldEnd = currentPosition + boldText.length();
-                        spannable.setSpan(new StyleSpan(android.graphics.Typeface.BOLD), boldStart, boldEnd, SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        currentPosition = boldEnd;
+                    String italicText = italicMatcher.group(1);
+                    int italicStart = currentPosition;
+                    spannable.append(italicText);
+                    int italicEnd = currentPosition + italicText.length();
+                    spannable.setSpan(new StyleSpan(android.graphics.Typeface.ITALIC), italicStart, italicEnd, SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    currentPosition = italicEnd;
 
-                        lastIndex = boldMatcher.end();
-                    } else {
-                        String beforeItalic = remainingText.substring(lastIndex, nextItalicStart);
-                        spannable.append(beforeItalic);
-                        currentPosition += beforeItalic.length();
-
-                        String italicText = italicMatcher.group(1);
-                        int italicStart = currentPosition;
-                        spannable.append(italicText);
-                        int italicEnd = currentPosition + italicText.length();
-                        spannable.setSpan(new StyleSpan(android.graphics.Typeface.ITALIC), italicStart, italicEnd, SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        currentPosition = italicEnd;
-
-                        lastIndex = italicMatcher.end();
-                    }
+                    lastIndex = italicMatcher.end();
                 }
             }
         }

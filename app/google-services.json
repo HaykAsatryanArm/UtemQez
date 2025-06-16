@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "224946011524",
+    "project_id": "utem-qez-sic",
+    "storage_bucket": "utem-qez-sic.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:224946011524:android:15b5e822964662958971d1",
+        "android_client_info": {
+          "package_name": "com.haykasatryan.utemqez"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoV-DgkQaIHm6oILJSeIWCbtQD_UcwcX8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -53,18 +53,24 @@
                 android:id="@+id/imageContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
                 <Button
                     android:id="@+id/btnSelectImage"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Select Image" />
-                <TextView
-                    android:id="@+id/imageUrlText"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="Image URL will appear here" />
+
+                <ImageView
+                    android:id="@+id/imageStatusIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="Image upload status"
+                    android:visibility="gone"
+                    android:src="@android:drawable/stat_sys_download" />
+
             </LinearLayout>
 
             <LinearLayout
@@ -77,7 +83,7 @@
                 android:id="@+id/btnAddIngredient"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Add Ingredient" />
+                android:text="+ Ingredient" />
 
             <LinearLayout
                 android:id="@+id/instructionsContainer"
@@ -89,7 +95,7 @@
                 android:id="@+id/btnAddInstruction"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Add Instruction Step" />
+                android:text="+ Instruction Step" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -131,7 +137,7 @@
                 android:id="@+id/btnAddCategory"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Add Category" />
+                android:text="+ Category" />
 
             <Button
                 android:id="@+id/btnPostRecipe"

@@ -21,6 +21,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -57,7 +58,7 @@ public class ProfileActivity extends AppCompatActivity {
     private Dialog recipeDialog;
     private Button btnSelectImage, btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe;
     private EditText recipeTitle, recipeTime;
-    private TextView imageUrlText;
+    private ImageView imageStatusIcon; // Changed from TextView to ImageView
     private LinearLayout ingredientsContainer, instructionsContainer, categoriesContainer;
     private EditText nutritionCalories, nutritionProtein, nutritionFat, nutritionCarbs;
     private String recipeImageUrl = "";
@@ -208,12 +209,27 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void showDeleteConfirmationDialog(Recipe recipe) {
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Delete Recipe")
                 .setMessage("Are you sure you want to delete \"" + recipe.getTitle() + "\"?")
-                .setPositiveButton("Delete", (dialog, which) -> deleteRecipe(recipe))
+                .setPositiveButton("Delete", (dialogInterface, which) -> deleteRecipe(recipe))
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        dialog.setOnShowListener(dialogInterface -> {
+            Button positiveButton = ((AlertDialog) dialogInterface).getButton(AlertDialog.BUTTON_POSITIVE);
+            Button negativeButton = ((AlertDialog) dialogInterface).getButton(AlertDialog.BUTTON_NEGATIVE);
+
+            // Set text colors
+            positiveButton.setTextColor(ContextCompat.getColor(this, R.color.black));
+            negativeButton.setTextColor(ContextCompat.getColor(this, R.color.black));
+
+            // Optionally set background colors
+            positiveButton.setBackgroundColor(ContextCompat.getColor(this, R.color.white));
+            negativeButton.setBackgroundColor(ContextCompat.getColor(this, R.color.white));
+        });
+
+        dialog.show();
     }
 
     private void deleteRecipe(Recipe recipe) {
@@ -239,7 +255,7 @@ public class ProfileActivity extends AppCompatActivity {
         recipeTitle = recipeDialog.findViewById(R.id.recipeTitle);
         recipeTime = recipeDialog.findViewById(R.id.recipeTime);
         btnSelectImage = recipeDialog.findViewById(R.id.btnSelectImage);
-        imageUrlText = recipeDialog.findViewById(R.id.imageUrlText);
+        imageStatusIcon = recipeDialog.findViewById(R.id.imageStatusIcon); // Initialize ImageView
         ingredientsContainer = recipeDialog.findViewById(R.id.ingredientsContainer);
         btnAddIngredient = recipeDialog.findViewById(R.id.btnAddIngredient);
         instructionsContainer = recipeDialog.findViewById(R.id.instructionsContainer);
@@ -255,7 +271,11 @@ public class ProfileActivity extends AppCompatActivity {
         TextView btnClosePopup = recipeDialog.findViewById(R.id.btnClosePopup);
         btnClosePopup.setOnClickListener(v -> recipeDialog.dismiss());
 
-        btnSelectImage.setOnClickListener(v -> pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
+        btnSelectImage.setOnClickListener(v -> {
+            imageStatusIcon.setImageResource(android.R.drawable.stat_sys_download); // Show download icon
+            imageStatusIcon.setVisibility(View.VISIBLE);
+            pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI));
+        });
         btnAddIngredient.setOnClickListener(v -> addIngredientField());
         btnAddInstruction.setOnClickListener(v -> addInstructionField());
         btnAddCategory.setOnClickListener(v -> addCategoryField());
@@ -404,7 +424,7 @@ public class ProfileActivity extends AppCompatActivity {
     private void clearForm() {
         recipeTitle.setText("");
         recipeTime.setText("");
-        imageUrlText.setText("");
+        imageStatusIcon.setVisibility(View.GONE); // Hide icon
         recipeImageUrl = "";
         ingredientsContainer.removeAllViews();
         instructionsContainer.removeAllViews();
@@ -455,12 +475,15 @@ public class ProfileActivity extends AppCompatActivity {
                             uploadImageToCloudinary(bitmap, false);
                         } else {
                             Log.e(TAG, "Failed to decode bitmap");
+                            imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
                         }
                     } catch (FileNotFoundException e) {
                         Log.e(TAG, "File not found", e);
+                        imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
                     }
                 } else {
                     Log.d(TAG, "Recipe image selection cancelled or failed");
+                    imageStatusIcon.setVisibility(View.GONE); // Hide icon on cancellation
                 }
             }
     );
@@ -470,7 +493,10 @@ public class ProfileActivity extends AppCompatActivity {
             try {
                 File file = convertBitmapToFile(bitmap);
                 if (file == null) {
-                    runOnUiThread(() -> Toast.makeText(this, "Error preparing image for upload", Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "Error preparing image for upload", Toast.LENGTH_SHORT).show();
+                        imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
+                    });
                     return;
                 }
                 Map uploadResult = cloudinary.uploader().upload(file, ObjectUtils.emptyMap());
@@ -491,18 +517,25 @@ public class ProfileActivity extends AppCompatActivity {
                         });
                     } else {
                         recipeImageUrl = imageUrl;
-                        runOnUiThread(() -> imageUrlText.setText(recipeImageUrl));
+                        runOnUiThread(() -> {
+                            imageStatusIcon.setImageResource(R.drawable.ic_check); // Show check icon
+                            imageStatusIcon.setVisibility(View.VISIBLE);
+                        });
                     }
                     Log.d(TAG, "Image uploaded: " + imageUrl);
                 } else {
-                    runOnUiThread(() -> Toast.makeText(this, "Image upload returned no URL", Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "Image upload returned no URL", Toast.LENGTH_SHORT).show();
+                        imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
+                    });
                     Log.e(TAG, "No URL returned from Cloudinary");
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     Toast.makeText(this, "Failed to upload image: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    Log.e(TAG, "Upload error", e);
+                    imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
                 });
+                Log.e(TAG, "Upload error", e);
             }
         }).start();
     }

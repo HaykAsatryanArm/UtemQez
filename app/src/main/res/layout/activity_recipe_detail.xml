@@ -276,7 +276,8 @@
                                 android:id="@+id/detailIngredients"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:textSize="16sp" />
+                                android:textSize="18sp"
+                                android:lineSpacingExtra="8dp" />
                         </LinearLayout>
 
                         <!-- Instructions Content -->
@@ -293,19 +294,18 @@
                                 android:id="@+id/voiceButton"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginBottom="8dp"
+                                android:layout_marginBottom="12dp"
                                 android:backgroundTint="@android:color/holo_green_dark"
                                 android:contentDescription="Start voice instructions"
                                 android:text="Start Voice Instructions"
                                 android:textSize="16sp" />
 
-                            <!-- Removed: Next Step Button -->
                             <TextView
                                 android:id="@+id/detailInstructions"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:lineSpacingExtra="4dp"
-                                android:textSize="16sp" />
+                                android:lineSpacingExtra="8dp"
+                                android:textSize="18sp" />
                         </LinearLayout>
                     </LinearLayout>
                 </androidx.constraintlayout.widget.ConstraintLayout>
