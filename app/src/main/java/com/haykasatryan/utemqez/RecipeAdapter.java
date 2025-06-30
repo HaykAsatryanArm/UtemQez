@@ -2,6 +2,8 @@ package com.haykasatryan.utemqez;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,11 +13,9 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
@@ -24,7 +24,6 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,6 +40,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     private final FirebaseAuth mAuth;
     private final FirebaseFirestore db;
     private final List<String> likedRecipeIds = Collections.synchronizedList(new ArrayList<>());
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public interface OnDeleteClickListener {
         void onDeleteClick(Recipe recipe);
@@ -51,7 +51,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
 
     public RecipeAdapter(List<Recipe> recipeList, int layoutResId) {
-        this.recipeList = recipeList != null ? recipeList : new ArrayList<>();
+        this.recipeList = recipeList != null ? new ArrayList<>(recipeList) : new ArrayList<>();
         this.layoutResId = layoutResId;
         this.mAuth = FirebaseAuth.getInstance();
         this.db = FirebaseFirestore.getInstance();
@@ -61,7 +61,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     @Override
     public long getItemId(int position) {
-        if (getItemViewType(position) == TYPE_RECIPE && recipeList != null && position < recipeList.size()) {
+        if (getItemViewType(position) == TYPE_RECIPE && position < recipeList.size()) {
             return recipeList.get(position).getId();
         }
         return -1;
@@ -77,26 +77,29 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     public void updateList(List<Recipe> newList) {
         List<Recipe> newListSafe = newList != null ? new ArrayList<>(newList) : new ArrayList<>();
-        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new RecipeDiffCallback(recipeList, newListSafe));
-        this.recipeList = newListSafe;
-        diffResult.dispatchUpdatesTo(this);
+        // Filter out null entries
+        newListSafe.removeIf(recipe -> recipe == null);
+        mainHandler.post(() -> {
+            DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new RecipeDiffCallback(recipeList, newListSafe));
+            recipeList.clear();
+            recipeList.addAll(newListSafe);
+            diffResult.dispatchUpdatesTo(this);
+        });
     }
 
     public void setLoading(boolean loading) {
-        if (isLoading != loading) {
+        mainHandler.post(() -> {
+            if (isLoading == loading) return;
             isLoading = loading;
-            if (loading) {
-                notifyItemInserted(recipeList.size());
-            } else {
-                notifyItemRemoved(recipeList.size());
-            }
-        }
+            notifyItemChanged(recipeList.size());
+        });
     }
 
     private void fetchLikedRecipes() {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
-            db.collection("users").document(user.getUid()).get()
+            String userId = user.getUid();
+            db.collection("users").document(userId).get()
                     .addOnSuccessListener(documentSnapshot -> {
                         synchronized (likedRecipeIds) {
                             likedRecipeIds.clear();
@@ -104,10 +107,12 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                             if (fetchedIds != null) {
                                 likedRecipeIds.addAll(fetchedIds);
                             }
-                            notifyDataSetChanged();
+                            Log.d("RecipeAdapter", "Fetched liked recipe IDs for user " + userId + ": " + likedRecipeIds);
+                            // Update like button states only, do not refresh entire adapter
+                            mainHandler.post(() -> notifyItemRangeChanged(0, recipeList.size()));
                         }
                     })
-                    .addOnFailureListener(e -> Log.e("RecipeAdapter", "Error fetching liked recipes: " + e.getMessage(), e));
+                    .addOnFailureListener(e -> Log.e("RecipeAdapter", "Error fetching liked recipes for user " + userId + ": " + e.getMessage(), e));
         } else {
             Log.w("RecipeAdapter", "No user logged in, skipping liked recipes fetch");
         }
@@ -115,10 +120,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     @Override
     public int getItemViewType(int position) {
-        if (recipeList == null || position >= recipeList.size()) {
-            return TYPE_LOADING;
-        }
-        return TYPE_RECIPE;
+        return position < recipeList.size() ? TYPE_RECIPE : TYPE_LOADING;
     }
 
     @NonNull
@@ -136,8 +138,8 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (holder instanceof RecipeViewHolder) {
-            if (recipeList == null || position >= recipeList.size()) {
-                Log.e("RecipeAdapter", "Invalid recipe list or position: " + position);
+            if (position >= recipeList.size()) {
+                Log.e("RecipeAdapter", "Invalid position for RecipeViewHolder: " + position);
                 return;
             }
             Recipe recipe = recipeList.get(position);
@@ -184,16 +186,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             boolean isLiked = likedRecipeIds.contains(recipeIdStr);
             if (recipeHolder.likeButton != null) {
                 recipeHolder.likeButton.setImageResource(isLiked ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
-                recipeHolder.likeButton.setOnClickListener(v -> {
-                    FirebaseUser user = mAuth.getCurrentUser();
-                    if (user == null) {
-                        Context context = holder.itemView.getContext();
-                        context.startActivity(new Intent(context, LoginActivity.class));
-                        Toast.makeText(context, "Please log in to like recipes", Toast.LENGTH_SHORT).show();
-                    } else {
-                        handleLike(recipe, recipeHolder);
-                    }
-                });
+                recipeHolder.likeButton.setOnClickListener(v -> handleLike(recipe, recipeHolder));
             }
 
             if (recipeHolder.viewDetailsButton != null) {
@@ -226,7 +219,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
     @Override
     public int getItemCount() {
-        return recipeList != null ? recipeList.size() + (isLoading ? 1 : 0) : (isLoading ? 1 : 0);
+        return recipeList.size() + (isLoading ? 1 : 0);
     }
 
     private void handleLike(Recipe recipe, RecipeViewHolder holder) {
@@ -237,15 +230,16 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             Toast.makeText(context, "Please log in to like recipes", Toast.LENGTH_SHORT).show();
             return;
         }
+        String userId = user.getUid();
         String recipeIdStr = String.valueOf(recipe.getId());
-        DocumentReference recipeRef = db.collection("recipes").document(recipeIdStr);
-        DocumentReference userRef = db.collection("users").document(user.getUid());
+        DocumentReference recipeRef = db.collection("recipes").document(recipe.getUserId()); // Use userId as document ID
+        DocumentReference userRef = db.collection("users").document(userId);
 
         synchronized (likedRecipeIds) {
             boolean isLiked = likedRecipeIds.contains(recipeIdStr);
             if (isLiked) {
                 userRef.update("likedRecipes", FieldValue.arrayRemove(recipeIdStr))
-                        .addOnSuccessListener(aVoid -> {
+                        .addOnSuccessListener(aVoid -> mainHandler.post(() -> {
                             synchronized (likedRecipeIds) {
                                 likedRecipeIds.remove(recipeIdStr);
                                 recipe.setLikes(recipe.getLikes() - 1);
@@ -258,14 +252,14 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                                 }
                                 notifyItemChanged(holder.getAdapterPosition());
                             }
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e("RecipeAdapter", "Failed to unlike recipe: " + e.getMessage(), e);
+                        }))
+                        .addOnFailureListener(e -> mainHandler.post(() -> {
+                            Log.e("RecipeAdapter", "Failed to unlike recipe for user " + userId + ": " + e.getMessage(), e);
                             Toast.makeText(holder.itemView.getContext(), "Failed to unlike recipe", Toast.LENGTH_SHORT).show();
-                        });
+                        }));
             } else {
                 userRef.update("likedRecipes", FieldValue.arrayUnion(recipeIdStr))
-                        .addOnSuccessListener(aVoid -> {
+                        .addOnSuccessListener(aVoid -> mainHandler.post(() -> {
                             synchronized (likedRecipeIds) {
                                 likedRecipeIds.add(recipeIdStr);
                                 recipe.setLikes(recipe.getLikes() + 1);
@@ -278,11 +272,11 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                                 }
                                 notifyItemChanged(holder.getAdapterPosition());
                             }
-                        })
-                        .addOnFailureListener(e -> {
-                            Log.e("RecipeAdapter", "Failed to like recipe: " + e.getMessage(), e);
+                        }))
+                        .addOnFailureListener(e -> mainHandler.post(() -> {
+                            Log.e("RecipeAdapter", "Failed to like recipe for user " + userId + ": " + e.getMessage(), e);
                             Toast.makeText(holder.itemView.getContext(), "Failed to like recipe", Toast.LENGTH_SHORT).show();
-                        });
+                        }));
             }
         }
     }
@@ -324,8 +318,11 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         private final List<Recipe> newList;
 
         RecipeDiffCallback(List<Recipe> oldList, List<Recipe> newList) {
-            this.oldList = oldList != null ? oldList : new ArrayList<>();
-            this.newList = newList != null ? newList : new ArrayList<>();
+            this.oldList = oldList != null ? new ArrayList<>(oldList) : new ArrayList<>();
+            this.newList = newList != null ? new ArrayList<>(newList) : new ArrayList<>();
+            // Filter out null entries
+            this.oldList.removeIf(recipe -> recipe == null);
+            this.newList.removeIf(recipe -> recipe == null);
         }
 
         @Override

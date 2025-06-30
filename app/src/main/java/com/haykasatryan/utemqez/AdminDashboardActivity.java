@@ -42,17 +42,17 @@ public class AdminDashboardActivity extends AppCompatActivity {
                                 adminTitle.setText("Admin Dashboard");
                             } else {
                                 Toast.makeText(this, "Access denied: Not an admin", Toast.LENGTH_LONG).show();
-                                startActivity(new Intent(this, ProfileActivity.class));
+                                startActivity(new Intent(this, ProfileFragment.class));
                                 finish();
                             }
                         } else {
                             Toast.makeText(this, "User data not found", Toast.LENGTH_LONG).show();
-                            startActivity(new Intent(this, ProfileActivity.class));
+                            startActivity(new Intent(this, ProfileFragment.class));
                             finish();
                         }
                     })
                     .addOnFailureListener(e -> {
-                        startActivity(new Intent(this, ProfileActivity.class));
+                        startActivity(new Intent(this, ProfileFragment.class));
                         finish();
                     });
         } else {
@@ -64,7 +64,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
         btnModerateRecipes.setOnClickListener(v -> startActivity(new Intent(this, ModerateRecipesActivity.class)));
         btnViewAnalytics.setOnClickListener(v -> startActivity(new Intent(this, AnalyticsActivity.class)));
         btnBack.setOnClickListener(v -> {
-            startActivity(new Intent(this, ProfileActivity.class));
+            startActivity(new Intent(this, ProfileFragment.class));
             finish();
         });
     }

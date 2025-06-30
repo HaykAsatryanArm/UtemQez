@@ -1,42 +1,38 @@
 package com.haykasatryan.utemqez;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.Toast;
-
-import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class SearchActivity extends AppCompatActivity {
+public class SearchFragment extends Fragment {
 
-    private static final String TAG = "SearchActivity";
+    private static final String TAG = "SearchFragment";
     private FirebaseAuth mAuth;
     private EditText searchBar;
     private ImageButton searchButton;
     private RecyclerView searchRecipesRecyclerView;
     private RecipeAdapter searchRecipesAdapter;
     private final List<Recipe> searchRecipesList = new ArrayList<>();
-    private final Set<Long> searchRecipeIds = new HashSet<>();
+    private final Set<Integer> searchRecipeIds = new HashSet<>(); // Changed to Set<Integer>
     private DocumentSnapshot lastSearchDoc = null;
     private boolean isLoadingSearch = false;
     private static final int PAGE_SIZE = 10;
@@ -44,37 +40,33 @@ public class SearchActivity extends AppCompatActivity {
     private static final long DEBOUNCE_MS = 500;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_search);
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-
         mAuth = FirebaseAuth.getInstance();
+    }
 
-        searchBar = findViewById(R.id.searchBar);
-        searchButton = findViewById(R.id.searchButton);
-        ImageButton profileButton = findViewById(R.id.nav_profile);
-        searchRecipesRecyclerView = findViewById(R.id.searchRecipesRecyclerView);
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_search, container, false);
 
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        searchBar = view.findViewById(R.id.searchBar);
+        searchButton = view.findViewById(R.id.searchButton);
+        ImageButton profileButton = view.findViewById(R.id.nav_profile);
+        searchRecipesRecyclerView = view.findViewById(R.id.searchRecipesRecyclerView);
+
+        LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false);
         searchRecipesRecyclerView.setLayoutManager(layoutManager);
         searchRecipesAdapter = new RecipeAdapter(searchRecipesList, R.layout.recipe_item_search);
         searchRecipesRecyclerView.setAdapter(searchRecipesAdapter);
 
         profileButton.setOnClickListener(v -> {
+            NavController navController = Navigation.findNavController(v);
             if (mAuth.getCurrentUser() == null) {
-                startActivity(new Intent(SearchActivity.this, LoginActivity.class));
+                navController.navigate(R.id.action_searchFragment_to_loginActivity);
             } else {
-                startActivity(new Intent(SearchActivity.this, ProfileActivity.class));
+                navController.navigate(R.id.action_searchFragment_to_profileFragment);
             }
         });
-
 
         searchButton.setOnClickListener(v -> {
             long currentTime = System.currentTimeMillis();
@@ -92,50 +84,6 @@ public class SearchActivity extends AppCompatActivity {
             searchRecipes(query);
         });
 
-        // Optional: Enable real-time search as user types
-        /*
-        searchBar.addTextWatcher(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastSearchClickTime < DEBOUNCE_MS) {
-                    return;
-                }
-                lastSearchClickTime = currentTime;
-                String query = s.toString().trim();
-                searchRecipesList.clear();
-                searchRecipeIds.clear();
-                lastSearchDoc = null;
-                searchRecipesAdapter.updateList(new ArrayList<>());
-                searchRecipes(query);
-            }
-        });
-        */
-
-        findViewById(R.id.nav_home).setOnClickListener(v -> {
-            startActivity(new Intent(SearchActivity.this, HomeActivity.class));
-            finish();
-        });
-        findViewById(R.id.nav_search).setOnClickListener(v -> {});
-        findViewById(R.id.nav_ai).setOnClickListener(v -> {
-            startActivity(new Intent(SearchActivity.this, ChatActivity.class));
-            finish();
-        });
-        findViewById(R.id.nav_liked).setOnClickListener(v -> {
-            if (mAuth.getCurrentUser() == null) {
-                startActivity(new Intent(SearchActivity.this, LoginActivity.class));
-                Toast.makeText(this, "Please log in to view liked recipes", Toast.LENGTH_SHORT).show();
-            } else {
-                startActivity(new Intent(SearchActivity.this, LikedRecipesActivity.class));
-            }
-        });
-
         searchRecipesRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -143,7 +91,6 @@ public class SearchActivity extends AppCompatActivity {
                 LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
                 int totalItemCount = layoutManager.getItemCount();
                 int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
-
                 if (!isLoadingSearch && totalItemCount <= (lastVisibleItem + 5)) {
                     Log.d(TAG, "Loading more recipes, total items: " + totalItemCount + ", last visible: " + lastVisibleItem);
                     searchRecipes(searchBar.getText().toString().trim());
@@ -153,6 +100,8 @@ public class SearchActivity extends AppCompatActivity {
 
         Log.d(TAG, "Initializing with empty search");
         searchRecipes("");
+
+        return view;
     }
 
     private void searchRecipes(String query) {
@@ -177,49 +126,62 @@ public class SearchActivity extends AppCompatActivity {
         List<String> queryVariations = lowerQuery.isEmpty() ? new ArrayList<>() : generateQueryVariations(lowerQuery);
 
         firestoreQuery.get().addOnCompleteListener(task -> {
+            if (!isAdded()) {
+                Log.w(TAG, "Fragment detached, skipping UI update");
+                isLoadingSearch = false;
+                return;
+            }
+            isLoadingSearch = false;
             if (task.isSuccessful()) {
                 List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
                     try {
                         Recipe recipe = document.toObject(Recipe.class);
                         if (recipe == null) {
+                            Log.w(TAG, "Null recipe for document: " + document.getId());
                             continue;
                         }
-                        boolean matches = query.isEmpty() || matchesQuery(recipe, queryVariations);
-                        if (!searchRecipeIds.contains((long) recipe.getId()) && matches) {
+                        recipe.setUserId(document.getId()); // Set userId from document ID
+                        boolean matches = lowerQuery.isEmpty() || matchesQuery(recipe, queryVariations);
+                        if (!searchRecipeIds.contains(recipe.getId()) && matches) {
                             newRecipes.add(recipe);
-                            searchRecipeIds.add((long) recipe.getId());
+                            searchRecipeIds.add(recipe.getId());
                         }
                     } catch (Exception e) {
                         Log.e(TAG, "Error parsing recipe: " + document.getId(), e);
                     }
                 }
+                Log.d(TAG, "Fetched " + newRecipes.size() + " recipes for query: " + query);
                 lastSearchDoc = task.getResult().getDocuments().isEmpty() ? null :
                         task.getResult().getDocuments().get(task.getResult().size() - 1);
 
-                Log.d(TAG, "Fetched " + newRecipes.size() + " new recipes, total in list: " + searchRecipesList.size());
-                runOnUiThread(() -> {
+                requireActivity().runOnUiThread(() -> {
+                    if (!isAdded()) {
+                        Log.w(TAG, "Fragment detached, skipping UI update");
+                        return;
+                    }
                     searchRecipesList.addAll(newRecipes);
                     searchRecipesAdapter.updateList(searchRecipesList);
-                    searchRecipesAdapter.notifyDataSetChanged(); // Force full refresh
-                    searchRecipesRecyclerView.invalidate(); // Force view redraw
-                    searchRecipesRecyclerView.requestLayout(); // Force layout update
-                    searchRecipesRecyclerView.scrollToPosition(0); // Scroll to top
                     searchRecipesAdapter.setLoading(false);
                     Log.d(TAG, "Adapter updated with " + searchRecipesList.size() + " recipes");
-                    if (newRecipes.isEmpty() && searchRecipesList.isEmpty() && !query.isEmpty()) {
-                        Toast.makeText(SearchActivity.this, "No recipes found", Toast.LENGTH_SHORT).show();
+                    if (newRecipes.isEmpty() && searchRecipesList.isEmpty() && !lowerQuery.isEmpty()) {
+                        Toast.makeText(requireContext(), "No recipes found", Toast.LENGTH_SHORT).show();
+                    } else if (newRecipes.isEmpty() && searchRecipesList.isEmpty()) {
+                        Log.w(TAG, "No recipes loaded for empty query");
+                        Toast.makeText(requireContext(), "No recipes available", Toast.LENGTH_SHORT).show();
                     }
                 });
             } else {
-                runOnUiThread(() -> {
+                requireActivity().runOnUiThread(() -> {
+                    if (!isAdded()) {
+                        Log.w(TAG, "Fragment detached, skipping UI update");
+                        return;
+                    }
                     searchRecipesAdapter.setLoading(false);
-                    Toast.makeText(SearchActivity.this, "Failed to load recipes", Toast.LENGTH_SHORT).show();
                     Log.e(TAG, "Error fetching recipes: ", task.getException());
+                    Toast.makeText(requireContext(), "Failed to load recipes", Toast.LENGTH_SHORT).show();
                 });
             }
-            isLoadingSearch = false;
-            Log.d(TAG, "Search completed, loading state: " + isLoadingSearch);
         });
     }
 

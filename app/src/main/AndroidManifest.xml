@@ -24,7 +24,7 @@
         android:theme="@style/Theme.UtemQez"
         tools:targetApi="p">
         <activity
-            android:name=".HomeActivity"
+            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -34,11 +34,7 @@
         </activity>
         <activity android:name=".LoginActivity" />
         <activity android:name=".RegisterActivity" />
-        <activity android:name=".ProfileActivity" />
         <activity android:name=".RecipeDetailActivity" />
-        <activity android:name=".SearchActivity" />
-        <activity android:name=".ChatActivity" android:windowSoftInputMode="adjustResize|stateAlwaysHidden"/>
-        <activity android:name=".LikedRecipesActivity" />
         <activity android:name=".AdminDashboardActivity" />
         <activity android:name=".ManageUsersActivity" />
         <activity android:name=".ModerateRecipesActivity" />

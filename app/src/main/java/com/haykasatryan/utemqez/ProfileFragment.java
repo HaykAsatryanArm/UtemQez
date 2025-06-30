@@ -1,5 +1,7 @@
 package com.haykasatryan.utemqez;
 
+import static android.app.Activity.RESULT_OK;
+
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
@@ -9,6 +11,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -17,14 +20,14 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
@@ -35,7 +38,6 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.SetOptions;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -46,9 +48,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-public class ProfileActivity extends AppCompatActivity {
+public class ProfileFragment extends Fragment {
 
-    private static final String TAG = "ProfileActivity";
+    private static final String TAG = "ProfileFragment";
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     private TextView userName, userEmail;
@@ -58,38 +60,39 @@ public class ProfileActivity extends AppCompatActivity {
     private Dialog recipeDialog;
     private Button btnSelectImage, btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe;
     private EditText recipeTitle, recipeTime;
-    private ImageView imageStatusIcon; // Changed from TextView to ImageView
+    private ImageView imageStatusIcon;
     private LinearLayout ingredientsContainer, instructionsContainer, categoriesContainer;
     private EditText nutritionCalories, nutritionProtein, nutritionFat, nutritionCarbs;
     private String recipeImageUrl = "";
-
     private RecyclerView userRecipesRecyclerView;
     private RecipeAdapter userRecipesAdapter;
     private final List<Recipe> userRecipesList = new ArrayList<>();
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_profile);
-
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
-
-        userName = findViewById(R.id.profileName);
-        userEmail = findViewById(R.id.profileEmail);
-        profileImage = findViewById(R.id.profilePicture);
-        btnLogout = findViewById(R.id.btnLogout);
-        btnAddNewRecipe = findViewById(R.id.btnAddNewRecipe);
-        userRecipesRecyclerView = findViewById(R.id.userRecipesRecyclerView);
-        Button btnAdminDashboard = findViewById(R.id.btnAdminDashboard);
-
         cloudinary = new Cloudinary(ObjectUtils.asMap(
                 "cloud_name", "deor2c9as",
                 "api_key", "882433745744291",
                 "api_secret", "tPtmtB9HaZ7pTv6dn7lEJJssOh0"
         ));
+    }
 
-        userRecipesRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_profile, container, false);
+
+        userName = view.findViewById(R.id.profileName);
+        userEmail = view.findViewById(R.id.profileEmail);
+        profileImage = view.findViewById(R.id.profilePicture);
+        btnLogout = view.findViewById(R.id.btnLogout);
+        btnAddNewRecipe = view.findViewById(R.id.btnAddNewRecipe);
+        userRecipesRecyclerView = view.findViewById(R.id.userRecipesRecyclerView);
+        Button btnAdminDashboard = view.findViewById(R.id.btnAdminDashboard);
+
+        userRecipesRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false));
         userRecipesAdapter = new RecipeAdapter(userRecipesList, R.layout.recipe_item_search);
         userRecipesRecyclerView.setAdapter(userRecipesAdapter);
 
@@ -112,18 +115,21 @@ public class ProfileActivity extends AppCompatActivity {
                     .addOnFailureListener(e -> Log.e(TAG, "Error checking admin status: " + e.getMessage(), e));
         } else {
             Log.w(TAG, "No user logged in");
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
+            Navigation.findNavController(view).navigate(R.id.action_profileFragment_to_loginActivity);
         }
 
         profileImage.setOnClickListener(v -> pickImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
         btnAddNewRecipe.setOnClickListener(v -> showRecipeFormDialog());
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut();
-            startActivity(new Intent(ProfileActivity.this, LoginActivity.class));
-            finish();
+            Navigation.findNavController(v).navigate(R.id.action_profileFragment_to_loginActivity);
         });
-        btnAdminDashboard.setOnClickListener(v -> startActivity(new Intent(this, AdminDashboardActivity.class)));
+        btnAdminDashboard.setOnClickListener(v -> {
+            Intent intent = new Intent(requireContext(), AdminDashboardActivity.class);
+            startActivity(intent);
+        });
+
+        return view;
     }
 
     private void initializeUserDocument(FirebaseUser user) {
@@ -186,20 +192,20 @@ public class ProfileActivity extends AppCompatActivity {
 
                                 userRecipesList.add(recipe);
                             } catch (Exception e) {
-                                runOnUiThread(() -> Toast.makeText(this, "Error loading recipe: " + document.getId(), Toast.LENGTH_SHORT).show());
+                                requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Error loading recipe: " + document.getId(), Toast.LENGTH_SHORT).show());
                                 Log.e(TAG, "Error parsing recipe: " + document.getId(), e);
                             }
                         }
-                        runOnUiThread(() -> {
+                        requireActivity().runOnUiThread(() -> {
                             userRecipesAdapter.notifyDataSetChanged();
-                            TextView noRecipesText = findViewById(R.id.noRecipesText);
+                            TextView noRecipesText = requireView().findViewById(R.id.noRecipesText);
                             noRecipesText.setVisibility(userRecipesList.isEmpty() ? View.VISIBLE : View.GONE);
                             userRecipesRecyclerView.setVisibility(userRecipesList.isEmpty() ? View.GONE : View.VISIBLE);
                             Log.d(TAG, "Fetched " + userRecipesList.size() + " user recipes");
                         });
                     } else {
-                        runOnUiThread(() -> {
-                            TextView noRecipesText = findViewById(R.id.noRecipesText);
+                        requireActivity().runOnUiThread(() -> {
+                            TextView noRecipesText = requireView().findViewById(R.id.noRecipesText);
                             noRecipesText.setVisibility(View.VISIBLE);
                             userRecipesRecyclerView.setVisibility(View.GONE);
                         });
@@ -209,7 +215,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void showDeleteConfirmationDialog(Recipe recipe) {
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle("Delete Recipe")
                 .setMessage("Are you sure you want to delete \"" + recipe.getTitle() + "\"?")
                 .setPositiveButton("Delete", (dialogInterface, which) -> deleteRecipe(recipe))
@@ -220,13 +226,11 @@ public class ProfileActivity extends AppCompatActivity {
             Button positiveButton = ((AlertDialog) dialogInterface).getButton(AlertDialog.BUTTON_POSITIVE);
             Button negativeButton = ((AlertDialog) dialogInterface).getButton(AlertDialog.BUTTON_NEGATIVE);
 
-            // Set text colors
-            positiveButton.setTextColor(ContextCompat.getColor(this, R.color.black));
-            negativeButton.setTextColor(ContextCompat.getColor(this, R.color.black));
+            positiveButton.setTextColor(ContextCompat.getColor(requireContext(), R.color.black));
+            negativeButton.setTextColor(ContextCompat.getColor(requireContext(), R.color.black));
 
-            // Optionally set background colors
-            positiveButton.setBackgroundColor(ContextCompat.getColor(this, R.color.white));
-            negativeButton.setBackgroundColor(ContextCompat.getColor(this, R.color.white));
+            positiveButton.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.white));
+            negativeButton.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.white));
         });
 
         dialog.show();
@@ -237,7 +241,7 @@ public class ProfileActivity extends AppCompatActivity {
                 .document(String.valueOf(recipe.getId()))
                 .delete()
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, "Recipe deleted successfully", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "Recipe deleted successfully", Toast.LENGTH_SHORT).show();
                     fetchUserRecipes(mAuth.getCurrentUser().getUid());
                     Log.d(TAG, "Recipe deleted: " + recipe.getId());
                 })
@@ -247,7 +251,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void showRecipeFormDialog() {
-        recipeDialog = new Dialog(this);
+        recipeDialog = new Dialog(requireContext());
         recipeDialog.setContentView(R.layout.layout_recipe_form_popup);
         recipeDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         recipeDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -255,7 +259,7 @@ public class ProfileActivity extends AppCompatActivity {
         recipeTitle = recipeDialog.findViewById(R.id.recipeTitle);
         recipeTime = recipeDialog.findViewById(R.id.recipeTime);
         btnSelectImage = recipeDialog.findViewById(R.id.btnSelectImage);
-        imageStatusIcon = recipeDialog.findViewById(R.id.imageStatusIcon); // Initialize ImageView
+        imageStatusIcon = recipeDialog.findViewById(R.id.imageStatusIcon);
         ingredientsContainer = recipeDialog.findViewById(R.id.ingredientsContainer);
         btnAddIngredient = recipeDialog.findViewById(R.id.btnAddIngredient);
         instructionsContainer = recipeDialog.findViewById(R.id.instructionsContainer);
@@ -272,7 +276,7 @@ public class ProfileActivity extends AppCompatActivity {
         btnClosePopup.setOnClickListener(v -> recipeDialog.dismiss());
 
         btnSelectImage.setOnClickListener(v -> {
-            imageStatusIcon.setImageResource(android.R.drawable.stat_sys_download); // Show download icon
+            imageStatusIcon.setImageResource(android.R.drawable.stat_sys_download);
             imageStatusIcon.setVisibility(View.VISIBLE);
             pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI));
         });
@@ -297,14 +301,14 @@ public class ProfileActivity extends AppCompatActivity {
 
     private boolean validateRecipeForm() {
         if (recipeTitle.getText().toString().trim().isEmpty()) {
-            Toast.makeText(this, "Please enter a recipe title", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Please enter a recipe title", Toast.LENGTH_SHORT).show();
             return false;
         }
         if (!recipeTime.getText().toString().trim().isEmpty()) {
             try {
                 Integer.parseInt(recipeTime.getText().toString().trim());
             } catch (NumberFormatException e) {
-                Toast.makeText(this, "Time must be a number", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Time must be a number", Toast.LENGTH_SHORT).show();
                 return false;
             }
         }
@@ -312,14 +316,14 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void addIngredientField() {
-        LinearLayout ingredientLayout = new LinearLayout(this);
+        LinearLayout ingredientLayout = new LinearLayout(requireContext());
         ingredientLayout.setOrientation(LinearLayout.HORIZONTAL);
         ingredientLayout.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        EditText amount = new EditText(this);
+        EditText amount = new EditText(requireContext());
         amount.setHint("Amount");
         amount.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        EditText name = new EditText(this);
+        EditText name = new EditText(requireContext());
         name.setHint("Ingredient Name");
         name.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
@@ -329,14 +333,14 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void addInstructionField() {
-        EditText instruction = new EditText(this);
+        EditText instruction = new EditText(requireContext());
         instruction.setHint("Instruction Step");
         instruction.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         instructionsContainer.addView(instruction);
     }
 
     private void addCategoryField() {
-        EditText category = new EditText(this);
+        EditText category = new EditText(requireContext());
         category.setHint("Category");
         category.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         categoriesContainer.addView(category);
@@ -345,7 +349,7 @@ public class ProfileActivity extends AppCompatActivity {
     private void postRecipe() {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) {
-            Toast.makeText(this, "Please log in to post a recipe", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Please log in to post a recipe", Toast.LENGTH_SHORT).show();
             Log.w(TAG, "No user logged in for posting recipe");
             return;
         }
@@ -411,7 +415,7 @@ public class ProfileActivity extends AppCompatActivity {
                 .document(String.valueOf(recipeId))
                 .set(recipe)
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, "Recipe posted successfully, pending approval", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "Recipe posted successfully, pending approval", Toast.LENGTH_SHORT).show();
                     clearForm();
                     fetchUserRecipes(user.getUid());
                     Log.d(TAG, "Recipe posted: " + recipeId);
@@ -424,7 +428,7 @@ public class ProfileActivity extends AppCompatActivity {
     private void clearForm() {
         recipeTitle.setText("");
         recipeTime.setText("");
-        imageStatusIcon.setVisibility(View.GONE); // Hide icon
+        imageStatusIcon.setVisibility(View.GONE);
         recipeImageUrl = "";
         ingredientsContainer.removeAllViews();
         instructionsContainer.removeAllViews();
@@ -445,7 +449,7 @@ public class ProfileActivity extends AppCompatActivity {
                     Uri imageUri = result.getData().getData();
                     Log.d(TAG, "Profile image selected: " + imageUri);
                     try {
-                        InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                        InputStream inputStream = requireActivity().getContentResolver().openInputStream(imageUri);
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                         if (bitmap != null) {
                             profileImage.setImageBitmap(bitmap);
@@ -469,21 +473,21 @@ public class ProfileActivity extends AppCompatActivity {
                     Uri imageUri = result.getData().getData();
                     Log.d(TAG, "Recipe image selected: " + imageUri);
                     try {
-                        InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                        InputStream inputStream = requireActivity().getContentResolver().openInputStream(imageUri);
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                         if (bitmap != null) {
                             uploadImageToCloudinary(bitmap, false);
                         } else {
                             Log.e(TAG, "Failed to decode bitmap");
-                            imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
+                            imageStatusIcon.setVisibility(View.GONE);
                         }
                     } catch (FileNotFoundException e) {
                         Log.e(TAG, "File not found", e);
-                        imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
+                        imageStatusIcon.setVisibility(View.GONE);
                     }
                 } else {
                     Log.d(TAG, "Recipe image selection cancelled or failed");
-                    imageStatusIcon.setVisibility(View.GONE); // Hide icon on cancellation
+                    imageStatusIcon.setVisibility(View.GONE);
                 }
             }
     );
@@ -493,9 +497,9 @@ public class ProfileActivity extends AppCompatActivity {
             try {
                 File file = convertBitmapToFile(bitmap);
                 if (file == null) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "Error preparing image for upload", Toast.LENGTH_SHORT).show();
-                        imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Error preparing image for upload", Toast.LENGTH_SHORT).show();
+                        imageStatusIcon.setVisibility(View.GONE);
                     });
                     return;
                 }
@@ -506,8 +510,8 @@ public class ProfileActivity extends AppCompatActivity {
                     if (isProfilePicture) {
                         saveProfilePictureToFirestore(imageUrl);
                         String finalImageUrl = imageUrl;
-                        runOnUiThread(() -> {
-                            Glide.with(this)
+                        requireActivity().runOnUiThread(() -> {
+                            Glide.with(requireContext())
                                     .load(finalImageUrl)
                                     .apply(new RequestOptions()
                                             .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -517,23 +521,23 @@ public class ProfileActivity extends AppCompatActivity {
                         });
                     } else {
                         recipeImageUrl = imageUrl;
-                        runOnUiThread(() -> {
-                            imageStatusIcon.setImageResource(R.drawable.ic_check); // Show check icon
+                        requireActivity().runOnUiThread(() -> {
+                            imageStatusIcon.setImageResource(R.drawable.ic_check);
                             imageStatusIcon.setVisibility(View.VISIBLE);
                         });
                     }
                     Log.d(TAG, "Image uploaded: " + imageUrl);
                 } else {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "Image upload returned no URL", Toast.LENGTH_SHORT).show();
-                        imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Image upload returned no URL", Toast.LENGTH_SHORT).show();
+                        imageStatusIcon.setVisibility(View.GONE);
                     });
                     Log.e(TAG, "No URL returned from Cloudinary");
                 }
             } catch (Exception e) {
-                runOnUiThread(() -> {
-                    Toast.makeText(this, "Failed to upload image: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    imageStatusIcon.setVisibility(View.GONE); // Hide icon on failure
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), "Failed to upload image: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    imageStatusIcon.setVisibility(View.GONE);
                 });
                 Log.e(TAG, "Upload error", e);
             }
@@ -541,14 +545,14 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private File convertBitmapToFile(Bitmap bitmap) {
-        File file = new File(getCacheDir(), "temp_image_" + System.currentTimeMillis() + ".jpg");
+        File file = new File(requireContext().getCacheDir(), "temp_image_" + System.currentTimeMillis() + ".jpg");
         try (FileOutputStream out = new FileOutputStream(file)) {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
             out.flush();
             Log.d(TAG, "File created at: " + file.getAbsolutePath() + ", size: " + file.length());
             return file;
         } catch (Exception e) {
-            runOnUiThread(() -> Toast.makeText(this, "Error converting image: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Error converting image: " + e.getMessage(), Toast.LENGTH_LONG).show());
             Log.e(TAG, "Error converting image", e);
             return null;
         }
@@ -558,7 +562,7 @@ public class ProfileActivity extends AppCompatActivity {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) {
             Log.w(TAG, "No user logged in for saving profile picture");
-            runOnUiThread(() -> Toast.makeText(this, "No user logged in", Toast.LENGTH_SHORT).show());
+            requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "No user logged in", Toast.LENGTH_SHORT).show());
             return;
         }
 
@@ -571,15 +575,15 @@ public class ProfileActivity extends AppCompatActivity {
         db.collection("users").document(userId)
                 .set(updates, SetOptions.merge())
                 .addOnSuccessListener(aVoid -> {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "Profile picture saved successfully", Toast.LENGTH_SHORT).show();
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Profile picture saved successfully", Toast.LENGTH_SHORT).show();
                         loadProfilePicture(user.getEmail());
                     });
                     Log.d(TAG, "Profile picture saved for user: " + userId + ", URL: " + imageUrl);
                 })
                 .addOnFailureListener(e -> {
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, "Failed to save profile picture: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Failed to save profile picture: " + e.getMessage(), Toast.LENGTH_LONG).show();
                         Log.e(TAG, "Failed to save profile picture for user: " + userId + ", error: " + e.getMessage(), e);
                     });
                 });
@@ -594,7 +598,7 @@ public class ProfileActivity extends AppCompatActivity {
                         String imageUrl = queryDocumentSnapshots.getDocuments().get(0).getString("profilePicture");
                         if (imageUrl != null && !imageUrl.isEmpty()) {
                             imageUrl = imageUrl.replace("http://", "https://");
-                            Glide.with(this)
+                            Glide.with(requireContext())
                                     .load(imageUrl)
                                     .apply(new RequestOptions()
                                             .diskCacheStrategy(DiskCacheStrategy.ALL)

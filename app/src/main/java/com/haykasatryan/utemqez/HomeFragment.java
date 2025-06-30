@@ -1,30 +1,28 @@
 package com.haykasatryan.utemqez;
 
-import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class HomeActivity extends AppCompatActivity {
+public class HomeFragment extends Fragment {
 
     private FirebaseAuth mAuth;
     private TextView welcomeText;
@@ -49,25 +47,24 @@ public class HomeActivity extends AppCompatActivity {
     private DocumentSnapshot lastAllRecipesDoc = null;
     private boolean isLoadingCategory = false;
     private boolean isLoadingAllRecipes = false;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_home);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-
         mAuth = FirebaseAuth.getInstance();
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+    }
 
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_home, container, false);
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             DocumentReference userRef = db.collection("users").document(user.getUid());
             userRef.get().addOnSuccessListener(documentSnapshot -> {
+                if (!isAdded()) return;
                 if (!documentSnapshot.exists()) {
                     Map<String, Object> userData = new HashMap<>();
                     userData.put("likedRecipes", new ArrayList<String>());
@@ -82,8 +79,8 @@ public class HomeActivity extends AppCompatActivity {
             });
         }
 
-        welcomeText = findViewById(R.id.header_title);
-        ImageButton profileButton = findViewById(R.id.nav_profile);
+        welcomeText = view.findViewById(R.id.header_title);
+        ImageButton profileButton = view.findViewById(R.id.nav_profile);
 
         if (user != null) {
             String userName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
@@ -94,29 +91,30 @@ public class HomeActivity extends AppCompatActivity {
         }
 
         profileButton.setOnClickListener(v -> {
+            NavController navController = Navigation.findNavController(v);
             if (mAuth.getCurrentUser() == null) {
-                startActivity(new Intent(HomeActivity.this, LoginActivity.class));
+                navController.navigate(R.id.action_homeFragment_to_loginActivity);
             } else {
-                startActivity(new Intent(HomeActivity.this, ProfileActivity.class));
+                navController.navigate(R.id.action_homeFragment_to_profileFragment);
             }
         });
 
-        recipeRecyclerView = findViewById(R.id.recipeRecyclerView);
-        LinearLayoutManager categoryLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
+        recipeRecyclerView = view.findViewById(R.id.recipeRecyclerView);
+        LinearLayoutManager categoryLayoutManager = new LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false);
         recipeRecyclerView.setLayoutManager(categoryLayoutManager);
         categoryRecipeAdapter = new RecipeAdapter(categoryRecipeList, R.layout.recipe_item_main);
         recipeRecyclerView.setAdapter(categoryRecipeAdapter);
 
-        allRecipesRecyclerView = findViewById(R.id.allRecipesRecyclerView);
-        LinearLayoutManager allRecipesLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        allRecipesRecyclerView = view.findViewById(R.id.allRecipesRecyclerView);
+        LinearLayoutManager allRecipesLayoutManager = new LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false);
         allRecipesRecyclerView.setLayoutManager(allRecipesLayoutManager);
         allRecipesAdapter = new RecipeAdapter(allRecipesList, R.layout.recipe_item_search);
         allRecipesRecyclerView.setAdapter(allRecipesAdapter);
 
-        buttonBreakfast = findViewById(R.id.buttonBreakfast);
-        buttonSalads = findViewById(R.id.buttonSalads);
-        buttonDinner = findViewById(R.id.buttonDinner);
-        buttonSnacks = findViewById(R.id.buttonSnacks);
+        buttonBreakfast = view.findViewById(R.id.buttonBreakfast);
+        buttonSalads = view.findViewById(R.id.buttonSalads);
+        buttonDinner = view.findViewById(R.id.buttonDinner);
+        buttonSnacks = view.findViewById(R.id.buttonSnacks);
 
         activeButton = buttonBreakfast;
         buttonBreakfast.setSelected(true);
@@ -142,17 +140,7 @@ public class HomeActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.nav_home).setOnClickListener(v -> {});
-        findViewById(R.id.nav_search).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, SearchActivity.class)));
-        findViewById(R.id.nav_ai).setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, ChatActivity.class)));
-        findViewById(R.id.nav_liked).setOnClickListener(v -> {
-            if (mAuth.getCurrentUser() == null) {
-                startActivity(new Intent(HomeActivity.this, LoginActivity.class));
-                Toast.makeText(this, "Please log in to view liked recipes", Toast.LENGTH_SHORT).show();
-            } else {
-                startActivity(new Intent(HomeActivity.this, LikedRecipesActivity.class));
-            }
-        });
+        return view;
     }
 
     private void setCategoryButtonListeners() {
@@ -174,7 +162,10 @@ public class HomeActivity extends AppCompatActivity {
             lastCategoryDoc = null;
             categoryRecipeIds.clear();
             categoryRecipeList.clear();
-            categoryRecipeAdapter.updateList(new ArrayList<>());
+            mainHandler.post(() -> {
+                if (!isAdded()) return;
+                categoryRecipeAdapter.updateList(new ArrayList<>());
+            });
             fetchRecipesByCategory(category);
         }
     }
@@ -182,7 +173,10 @@ public class HomeActivity extends AppCompatActivity {
     private void fetchRecipesByCategory(String selectedCategory) {
         if (isLoadingCategory) return;
         isLoadingCategory = true;
-        categoryRecipeAdapter.setLoading(true);
+        mainHandler.post(() -> {
+            if (!isAdded()) return;
+            categoryRecipeAdapter.setLoading(true);
+        });
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         Query query = db.collection("recipes")
@@ -195,6 +189,12 @@ public class HomeActivity extends AppCompatActivity {
         }
 
         query.get().addOnCompleteListener(task -> {
+            if (!isAdded()) {
+                Log.w("HomeFragment", "Fragment detached, skipping UI update");
+                isLoadingCategory = false;
+                return;
+            }
+            isLoadingCategory = false;
             if (task.isSuccessful()) {
                 List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
@@ -210,27 +210,35 @@ public class HomeActivity extends AppCompatActivity {
                 lastCategoryDoc = task.getResult().getDocuments().isEmpty() ? null :
                         task.getResult().getDocuments().get(task.getResult().size() - 1);
 
-                runOnUiThread(() -> {
-                    List<Recipe> updatedList = new ArrayList<>(categoryRecipeList);
-                    updatedList.addAll(newRecipes);
-                    categoryRecipeList.clear();
-                    categoryRecipeList.addAll(updatedList);
-                    categoryRecipeAdapter.updateList(updatedList);
+                mainHandler.post(() -> {
+                    if (!isAdded()) {
+                        Log.w("HomeFragment", "Fragment detached, skipping UI update");
+                        return;
+                    }
+                    categoryRecipeList.addAll(newRecipes);
+                    categoryRecipeAdapter.updateList(categoryRecipeList);
                     categoryRecipeAdapter.setLoading(false);
                 });
             } else {
-                runOnUiThread(() -> {
+                mainHandler.post(() -> {
+                    if (!isAdded()) {
+                        Log.w("HomeFragment", "Fragment detached, skipping UI update");
+                        return;
+                    }
+                    Toast.makeText(requireContext(), "Error loading recipes", Toast.LENGTH_SHORT).show();
                     categoryRecipeAdapter.setLoading(false);
                 });
             }
-            isLoadingCategory = false;
         });
     }
 
     private void fetchAllRecipes() {
         if (isLoadingAllRecipes) return;
         isLoadingAllRecipes = true;
-        allRecipesAdapter.setLoading(true);
+        mainHandler.post(() -> {
+            if (!isAdded()) return;
+            allRecipesAdapter.setLoading(true);
+        });
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         Query query = db.collection("recipes")
@@ -241,6 +249,12 @@ public class HomeActivity extends AppCompatActivity {
         }
 
         query.get().addOnCompleteListener(task -> {
+            if (!isAdded()) {
+                Log.w("HomeFragment", "Fragment detached, skipping UI update");
+                isLoadingAllRecipes = false;
+                return;
+            }
+            isLoadingAllRecipes = false;
             if (task.isSuccessful()) {
                 List<Recipe> newRecipes = new ArrayList<>();
                 for (DocumentSnapshot document : task.getResult()) {
@@ -253,23 +267,34 @@ public class HomeActivity extends AppCompatActivity {
                         }
                     }
                 }
+                Log.d("HomeFragment", "Fetched " + newRecipes.size() + " recipes for Popular section");
                 lastAllRecipesDoc = task.getResult().getDocuments().isEmpty() ? null :
                         task.getResult().getDocuments().get(task.getResult().size() - 1);
 
-                runOnUiThread(() -> {
-                    List<Recipe> updatedList = new ArrayList<>(allRecipesList);
-                    updatedList.addAll(newRecipes);
-                    allRecipesList.clear();
-                    allRecipesList.addAll(updatedList);
-                    allRecipesAdapter.updateList(updatedList);
+                mainHandler.post(() -> {
+                    if (!isAdded()) {
+                        Log.w("HomeFragment", "Fragment detached, skipping UI update");
+                        return;
+                    }
+                    allRecipesList.addAll(newRecipes);
+                    allRecipesAdapter.updateList(allRecipesList);
                     allRecipesAdapter.setLoading(false);
+                    if (newRecipes.isEmpty() && allRecipesList.isEmpty()) {
+                        Log.w("HomeFragment", "No recipes loaded for Popular section");
+                        Toast.makeText(requireContext(), "No popular recipes available", Toast.LENGTH_SHORT).show();
+                    }
                 });
             } else {
-                runOnUiThread(() -> {
+                mainHandler.post(() -> {
+                    if (!isAdded()) {
+                        Log.w("HomeFragment", "Fragment detached, skipping UI update");
+                        return;
+                    }
+                    Log.e("HomeFragment", "Error fetching popular recipes: " + task.getException().getMessage());
+                    Toast.makeText(requireContext(), "Error loading popular recipes", Toast.LENGTH_SHORT).show();
                     allRecipesAdapter.setLoading(false);
                 });
             }
-            isLoadingAllRecipes = false;
         });
     }
 }

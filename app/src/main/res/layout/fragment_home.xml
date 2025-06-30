@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".HomeActivity">
+    tools:context=".HomeFragment">
 
     <!-- Fixed Background Image -->
     <ImageView
@@ -34,7 +34,7 @@
             android:id="@+id/main"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingBottom="88dp">
+            android:paddingBottom="16dp">
 
             <LinearLayout
                 android:id="@+id/header"
@@ -243,67 +243,5 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
-
-    <!-- Bottom Navigation Bar -->
-    <LinearLayout
-        android:id="@+id/bottom_navigation"
-        android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="76dp"
-        android:background="@drawable/rounded_nav_background"
-        android:elevation="16dp"
-        android:translationZ="16dp"
-        android:gravity="center"
-        android:orientation="horizontal"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <ImageButton
-            android:id="@+id/nav_home"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
-            android:contentDescription="Home"
-            android:padding="14dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/home" />
-
-        <ImageButton
-            android:id="@+id/nav_search"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
-            android:contentDescription="Search"
-            android:padding="14dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/search" />
-
-        <ImageButton
-            android:id="@+id/nav_ai"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
-            android:contentDescription="AI"
-            android:padding="14dp"
-            android:scaleType="fitCenter"
-            app:srcCompat="@drawable/chat" />
-
-        <ImageButton
-            android:id="@+id/nav_liked"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
-            android:contentDescription="Liked"
-            android:padding="14dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/note" />
-    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

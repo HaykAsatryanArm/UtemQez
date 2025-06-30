@@ -1,37 +1,31 @@
 package com.haykasatryan.utemqez;
 
-import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.text.SpannableStringBuilder;
-import android.text.style.BulletSpan;
 import android.text.style.LeadingMarginSpan;
 import android.text.style.StyleSpan;
+import android.view.LayoutInflater;
 import android.view.View;
-import android.view.WindowManager;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Button;
-
-import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.google.ai.client.generativeai.java.ChatFutures;
 import com.google.firebase.auth.FirebaseAuth;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ChatActivity extends AppCompatActivity implements ResponseCallback {
+public class ChatFragment extends Fragment implements ResponseCallback {
 
     private FirebaseAuth mAuth;
     private RecyclerView chatRecyclerView;
@@ -43,22 +37,23 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
     private ChatFutures chatModel;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_chat);
-
-        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-
         mAuth = FirebaseAuth.getInstance();
+        // Note: Set android:windowSoftInputMode="adjustResize" in MainActivity's AndroidManifest.xml entry
+    }
 
-        ImageButton profileButton = findViewById(R.id.nav_profile);
-        closeButton = findViewById(R.id.closeButton);
-        chatRecyclerView = findViewById(R.id.chatRecyclerView);
-        messageInput = findViewById(R.id.messageInput);
-        sendButton = findViewById(R.id.sendButton);
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_chat, container, false);
 
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        ImageButton profileButton = view.findViewById(R.id.nav_profile);
+        closeButton = view.findViewById(R.id.closeButton);
+        chatRecyclerView = view.findViewById(R.id.chatRecyclerView);
+        messageInput = view.findViewById(R.id.messageInput);
+        sendButton = view.findViewById(R.id.sendButton);
+
+        LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext());
         layoutManager.setStackFromEnd(true);
         chatRecyclerView.setLayoutManager(layoutManager);
         chatAdapter = new ChatMessageAdapter(messageList);
@@ -68,19 +63,16 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
         chatModel = geminiPro.getModel().startChat();
 
         profileButton.setOnClickListener(v -> {
+            NavController navController = Navigation.findNavController(v);
             if (mAuth.getCurrentUser() == null) {
-                startActivity(new Intent(ChatActivity.this, LoginActivity.class));
+                navController.navigate(R.id.action_chatFragment_to_loginActivity);
             } else {
-                startActivity(new Intent(ChatActivity.this, ProfileActivity.class));
+                navController.navigate(R.id.action_chatFragment_to_profileFragment);
             }
         });
 
-        closeButton.setOnClickListener(v -> {
-            Intent intent = new Intent(ChatActivity.this, HomeActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(intent);
-            finish();
-        });
+        closeButton.setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_chatFragment_to_homeFragment));
 
         sendButton.setOnClickListener(v -> {
             String message = messageInput.getText().toString().trim();
@@ -93,7 +85,7 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
             }
         });
 
-        final View rootView = findViewById(R.id.main);
+        final View rootView = view.findViewById(R.id.main);
         rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             Rect r = new Rect();
             rootView.getWindowVisibleDisplayFrame(r);
@@ -108,11 +100,13 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
                 }, 100);
             }
         });
+
+        return view;
     }
 
     @Override
     public void onResponse(String response) {
-        runOnUiThread(() -> {
+        requireActivity().runOnUiThread(() -> {
             messageList.add(new ChatMessage(response, false));
             chatAdapter.notifyItemInserted(messageList.size() - 1);
             chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
@@ -121,7 +115,7 @@ public class ChatActivity extends AppCompatActivity implements ResponseCallback 
 
     @Override
     public void onError(Throwable throwable) {
-        runOnUiThread(() -> {
+        requireActivity().runOnUiThread(() -> {
             messageList.add(new ChatMessage("Error: " + throwable.getMessage(), false));
             chatAdapter.notifyItemInserted(messageList.size() - 1);
             chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
@@ -156,8 +150,8 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
     }
 
     @Override
-    public MessageViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
-        View view = android.view.LayoutInflater.from(parent.getContext())
+    public MessageViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.chat_message_item, parent, false);
         return new MessageViewHolder(view);
     }
@@ -215,8 +209,7 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
                 int lineEnd = currentPosition + numberText.length() + itemText.length();
                 spannable.setSpan(new LeadingMarginSpan.Standard(30), lineStart, lineEnd, SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE);
                 currentPosition = lineEnd;
-            }
-            else {
+            } else {
                 String remainingText = line;
                 int lastIndex = 0;
 
@@ -259,7 +252,7 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
     static class MessageViewHolder extends RecyclerView.ViewHolder {
         TextView messageText;
 
-        public MessageViewHolder(android.view.View itemView) {
+        public MessageViewHolder(View itemView) {
             super(itemView);
             messageText = itemView.findViewById(R.id.messageText);
         }

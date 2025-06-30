@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.gms.google.services)
+    id("androidx.navigation.safeargs")
 }
 
 android {
@@ -40,6 +41,9 @@ android {
 
 dependencies {
     implementation(libs.cloudinary.android)
+    implementation(libs.navigation.fragment)
+    implementation(libs.navigation.ui)
+
     implementation(libs.okhttp)
     implementation(libs.firebase.firestore.vlatestversion)
     implementation(libs.recyclerview)

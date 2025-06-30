@@ -6,7 +6,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".LikedRecipesActivity">
+    tools:context=".LikedRecipesFragment">
 
     <!-- Fixed Background Image -->
     <ImageView
@@ -35,7 +35,7 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingBottom="88dp">
+            android:paddingBottom="16dp">
 
             <LinearLayout
                 android:id="@+id/header"

@@ -8,7 +8,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.util.Patterns;
 import android.view.MotionEvent;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -52,7 +51,7 @@ public class RegisterActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
 
         toLogLink.setOnClickListener(v -> startActivity(new Intent(RegisterActivity.this, LoginActivity.class)));
-        skip.setOnClickListener(v -> startActivity(new Intent(RegisterActivity.this, HomeActivity.class)));
+        skip.setOnClickListener(v -> startActivity(new Intent(RegisterActivity.this, HomeFragment.class)));
 
         registerBtn.setOnClickListener(view -> registerUser());
 
