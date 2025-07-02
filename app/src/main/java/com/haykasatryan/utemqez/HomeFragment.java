@@ -1,5 +1,7 @@
 package com.haykasatryan.utemqez;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,10 +27,8 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class HomeFragment extends Fragment {
 
@@ -38,8 +38,6 @@ public class HomeFragment extends Fragment {
     private RecipeAdapter categoryRecipeAdapter, allRecipesAdapter;
     private final List<Recipe> categoryRecipeList = new ArrayList<>();
     private final List<Recipe> allRecipesList = new ArrayList<>();
-    private final Set<Integer> categoryRecipeIds = new HashSet<>();
-    private final Set<Integer> allRecipeIds = new HashSet<>();
     private Button buttonBreakfast, buttonSalads, buttonDinner, buttonSnacks;
     private Button activeButton;
     private static final int PAGE_SIZE = 10;
@@ -48,6 +46,8 @@ public class HomeFragment extends Fragment {
     private boolean isLoadingCategory = false;
     private boolean isLoadingAllRecipes = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private long lastScrollTime = 0;
+    private static final long DEBOUNCE_INTERVAL_MS = 500;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -61,23 +61,7 @@ public class HomeFragment extends Fragment {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         FirebaseUser user = mAuth.getCurrentUser();
-        if (user != null) {
-            DocumentReference userRef = db.collection("users").document(user.getUid());
-            userRef.get().addOnSuccessListener(documentSnapshot -> {
-                if (!isAdded()) return;
-                if (!documentSnapshot.exists()) {
-                    Map<String, Object> userData = new HashMap<>();
-                    userData.put("likedRecipes", new ArrayList<String>());
-                    userRef.set(userData)
-                            .addOnSuccessListener(aVoid -> Log.d("Firestore", "User document created"))
-                            .addOnFailureListener(e -> Log.w("Firestore", "Error creating user document", e));
-                } else if (documentSnapshot.get("likedRecipes") == null) {
-                    userRef.update("likedRecipes", new ArrayList<String>())
-                            .addOnSuccessListener(aVoid -> Log.d("Firestore", "likedRecipes initialized"))
-                            .addOnFailureListener(e -> Log.w("Firestore", "Error initializing likedRecipes", e));
-                }
-            });
-        }
+        initializeUserData(user, db);
 
         welcomeText = view.findViewById(R.id.header_title);
         ImageButton profileButton = view.findViewById(R.id.nav_profile);
@@ -117,12 +101,7 @@ public class HomeFragment extends Fragment {
         buttonSnacks = view.findViewById(R.id.buttonSnacks);
 
         activeButton = buttonBreakfast;
-        buttonBreakfast.setSelected(true);
-        buttonBreakfast.setTextColor(getResources().getColor(R.color.white));
-        buttonSalads.setTextColor(getResources().getColor(R.color.blackot));
-        buttonDinner.setTextColor(getResources().getColor(R.color.blackot));
-        buttonSnacks.setTextColor(getResources().getColor(R.color.blackot));
-
+        updateCategoryButtonState(buttonBreakfast);
         setCategoryButtonListeners();
         fetchRecipesByCategory("Breakfast");
         fetchAllRecipes();
@@ -131,6 +110,10 @@ public class HomeFragment extends Fragment {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastScrollTime < DEBOUNCE_INTERVAL_MS) return;
+                lastScrollTime = currentTime;
+
                 LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
                 int totalItemCount = layoutManager.getItemCount();
                 int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
@@ -143,6 +126,37 @@ public class HomeFragment extends Fragment {
         return view;
     }
 
+    private void initializeUserData(FirebaseUser user, FirebaseFirestore db) {
+        if (user == null) return;
+        SharedPreferences prefs = requireContext().getSharedPreferences("user_prefs", Context.MODE_PRIVATE);
+        boolean isUserInitialized = prefs.getBoolean("user_initialized_" + user.getUid(), false);
+        if (!isUserInitialized) {
+            DocumentReference userRef = db.collection("users").document(user.getUid());
+            userRef.get().addOnSuccessListener(documentSnapshot -> {
+                if (!isAdded()) return;
+                if (!documentSnapshot.exists()) {
+                    Map<String, Object> userData = new HashMap<>();
+                    userData.put("likedRecipes", new ArrayList<String>());
+                    userRef.set(userData)
+                            .addOnSuccessListener(aVoid -> {
+                                prefs.edit().putBoolean("user_initialized_" + user.getUid(), true).apply();
+                                Log.d("Firestore", "User document created");
+                            })
+                            .addOnFailureListener(e -> Log.w("Firestore", "Error creating user document", e));
+                } else if (documentSnapshot.get("likedRecipes") == null) {
+                    userRef.update("likedRecipes", new ArrayList<String>())
+                            .addOnSuccessListener(aVoid -> {
+                                prefs.edit().putBoolean("user_initialized_" + user.getUid(), true).apply();
+                                Log.d("Firestore", "likedRecipes initialized");
+                            })
+                            .addOnFailureListener(e -> Log.w("Firestore", "Error initializing likedRecipes", e));
+                } else {
+                    prefs.edit().putBoolean("user_initialized_" + user.getUid(), true).apply();
+                }
+            });
+        }
+    }
+
     private void setCategoryButtonListeners() {
         buttonBreakfast.setOnClickListener(v -> handleCategorySelection("Breakfast", buttonBreakfast));
         buttonSalads.setOnClickListener(v -> handleCategorySelection("Salads", buttonSalads));
@@ -150,17 +164,20 @@ public class HomeFragment extends Fragment {
         buttonSnacks.setOnClickListener(v -> handleCategorySelection("Snacks", buttonSnacks));
     }
 
+    private void updateCategoryButtonState(Button selectedButton) {
+        if (activeButton != null) {
+            activeButton.setSelected(false);
+            activeButton.setTextColor(getResources().getColor(R.color.blackot));
+        }
+        selectedButton.setSelected(true);
+        selectedButton.setTextColor(getResources().getColor(R.color.white));
+        activeButton = selectedButton;
+    }
+
     private void handleCategorySelection(String category, Button selectedButton) {
         if (activeButton != selectedButton) {
-            if (activeButton != null) {
-                activeButton.setSelected(false);
-                activeButton.setTextColor(getResources().getColor(R.color.blackot));
-            }
-            selectedButton.setSelected(true);
-            selectedButton.setTextColor(getResources().getColor(R.color.white));
-            activeButton = selectedButton;
+            updateCategoryButtonState(selectedButton);
             lastCategoryDoc = null;
-            categoryRecipeIds.clear();
             categoryRecipeList.clear();
             mainHandler.post(() -> {
                 if (!isAdded()) return;
@@ -190,7 +207,6 @@ public class HomeFragment extends Fragment {
 
         query.get().addOnCompleteListener(task -> {
             if (!isAdded()) {
-                Log.w("HomeFragment", "Fragment detached, skipping UI update");
                 isLoadingCategory = false;
                 return;
             }
@@ -201,30 +217,21 @@ public class HomeFragment extends Fragment {
                     Recipe recipe = document.toObject(Recipe.class);
                     if (recipe != null) {
                         recipe.setUserId(document.getId());
-                        if (!categoryRecipeIds.contains(recipe.getId())) {
-                            newRecipes.add(recipe);
-                            categoryRecipeIds.add(recipe.getId());
-                        }
+                        newRecipes.add(recipe);
                     }
                 }
                 lastCategoryDoc = task.getResult().getDocuments().isEmpty() ? null :
                         task.getResult().getDocuments().get(task.getResult().size() - 1);
 
                 mainHandler.post(() -> {
-                    if (!isAdded()) {
-                        Log.w("HomeFragment", "Fragment detached, skipping UI update");
-                        return;
-                    }
+                    if (!isAdded()) return;
                     categoryRecipeList.addAll(newRecipes);
                     categoryRecipeAdapter.updateList(categoryRecipeList);
                     categoryRecipeAdapter.setLoading(false);
                 });
             } else {
                 mainHandler.post(() -> {
-                    if (!isAdded()) {
-                        Log.w("HomeFragment", "Fragment detached, skipping UI update");
-                        return;
-                    }
+                    if (!isAdded()) return;
                     Toast.makeText(requireContext(), "Error loading recipes", Toast.LENGTH_SHORT).show();
                     categoryRecipeAdapter.setLoading(false);
                 });
@@ -250,7 +257,6 @@ public class HomeFragment extends Fragment {
 
         query.get().addOnCompleteListener(task -> {
             if (!isAdded()) {
-                Log.w("HomeFragment", "Fragment detached, skipping UI update");
                 isLoadingAllRecipes = false;
                 return;
             }
@@ -261,10 +267,7 @@ public class HomeFragment extends Fragment {
                     Recipe recipe = document.toObject(Recipe.class);
                     if (recipe != null) {
                         recipe.setUserId(document.getId());
-                        if (!allRecipeIds.contains(recipe.getId())) {
-                            newRecipes.add(recipe);
-                            allRecipeIds.add(recipe.getId());
-                        }
+                        newRecipes.add(recipe);
                     }
                 }
                 Log.d("HomeFragment", "Fetched " + newRecipes.size() + " recipes for Popular section");
@@ -272,10 +275,7 @@ public class HomeFragment extends Fragment {
                         task.getResult().getDocuments().get(task.getResult().size() - 1);
 
                 mainHandler.post(() -> {
-                    if (!isAdded()) {
-                        Log.w("HomeFragment", "Fragment detached, skipping UI update");
-                        return;
-                    }
+                    if (!isAdded()) return;
                     allRecipesList.addAll(newRecipes);
                     allRecipesAdapter.updateList(allRecipesList);
                     allRecipesAdapter.setLoading(false);
@@ -286,15 +286,20 @@ public class HomeFragment extends Fragment {
                 });
             } else {
                 mainHandler.post(() -> {
-                    if (!isAdded()) {
-                        Log.w("HomeFragment", "Fragment detached, skipping UI update");
-                        return;
-                    }
+                    if (!isAdded()) return;
                     Log.e("HomeFragment", "Error fetching popular recipes: " + task.getException().getMessage());
                     Toast.makeText(requireContext(), "Error loading popular recipes", Toast.LENGTH_SHORT).show();
                     allRecipesAdapter.setLoading(false);
                 });
             }
         });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        categoryRecipeList.clear();
+        allRecipesList.clear();
+        mainHandler.removeCallbacksAndMessages(null);
     }
 }

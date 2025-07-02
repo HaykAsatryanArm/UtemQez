@@ -21,7 +21,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.ai.client.generativeai.java.ChatFutures;
 import com.google.firebase.auth.FirebaseAuth;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,18 +31,80 @@ public class ChatFragment extends Fragment implements ResponseCallback {
 
     private FirebaseAuth mAuth;
     private RecyclerView chatRecyclerView;
+    private RecyclerView suggestionsRecyclerView;
     private EditText messageInput;
     private ImageButton sendButton;
     private Button closeButton;
     private ChatMessageAdapter chatAdapter;
+    private SuggestionsAdapter suggestionsAdapter;
     private final List<ChatMessage> messageList = new ArrayList<>();
+    private final List<Suggestion> suggestionList = new ArrayList<>();
     private ChatFutures chatModel;
+    private boolean isFirstMessageSent = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mAuth = FirebaseAuth.getInstance();
-        // Note: Set android:windowSoftInputMode="adjustResize" in MainActivity's AndroidManifest.xml entry
+
+        List<String> suggestionPool = new ArrayList<>();
+        suggestionPool.add("What's a quick dinner recipe?");
+        suggestionPool.add("Suggest a vegan dessert.");
+        suggestionPool.add("How to make a perfect omelette?");
+        suggestionPool.add("What's a healthy breakfast idea?");
+        suggestionPool.add("Can you recommend a low-carb dinner?");
+        suggestionPool.add("How to bake a chocolate cake?");
+        suggestionPool.add("What's a good vegetarian lunch?");
+        suggestionPool.add("Suggest a gluten-free snack.");
+        suggestionPool.add("How to make homemade pizza?");
+        suggestionPool.add("What's a quick pasta recipe?");
+        suggestionPool.add("Suggest a refreshing summer drink.");
+        suggestionPool.add("How to cook a steak perfectly?");
+        suggestionPool.add("What's a traditional Italian dish?");
+        suggestionPool.add("How to make a creamy soup?");
+        suggestionPool.add("Suggest a spicy Mexican recipe.");
+        suggestionPool.add("What's a good side dish for chicken?");
+        suggestionPool.add("How to prepare sushi at home?");
+        suggestionPool.add("Suggest a dairy-free breakfast.");
+        suggestionPool.add("What's a simple salad dressing?");
+        suggestionPool.add("How to make fluffy pancakes?");
+        suggestionPool.add("Suggest a quick appetizer for a party.");
+        suggestionPool.add("What's a healthy smoothie recipe?");
+        suggestionPool.add("How to cook quinoa perfectly?");
+        suggestionPool.add("Suggest a budget-friendly meal.");
+        suggestionPool.add("What's a classic French dessert?");
+        suggestionPool.add("How to make homemade bread?");
+        suggestionPool.add("Suggest a low-sugar dessert.");
+        suggestionPool.add("What's a good recipe for fish?");
+        suggestionPool.add("How to make a vegetarian curry?");
+        suggestionPool.add("Suggest a kid-friendly meal.");
+        suggestionPool.add("What's a quick stir-fry recipe?");
+        suggestionPool.add("How to make a perfect risotto?");
+        suggestionPool.add("Suggest a high-protein snack.");
+        suggestionPool.add("What's a traditional Indian dish?");
+        suggestionPool.add("How to make a fruit tart?");
+        suggestionPool.add("Suggest a warm winter drink.");
+        suggestionPool.add("What's a good recipe for shrimp?");
+        suggestionPool.add("How to make a vegan pizza?");
+        suggestionPool.add("Suggest a healthy lunch idea.");
+        suggestionPool.add("What's a simple BBQ sauce recipe?");
+        suggestionPool.add("How to cook lentils properly?");
+        suggestionPool.add("Suggest a festive holiday dessert.");
+        suggestionPool.add("What's a quick breakfast for busy mornings?");
+        suggestionPool.add("How to make a creamy pasta sauce?");
+        suggestionPool.add("Suggest a savory pie recipe.");
+        suggestionPool.add("What's a good recipe for tacos?");
+        suggestionPool.add("How to make homemade ice cream?");
+        suggestionPool.add("Suggest a plant-based dinner.");
+        suggestionPool.add("What's a simple soup for beginners?");
+        suggestionPool.add("How to make a perfect cheesecake?");
+
+        Random random = new Random();
+        Collections.shuffle(suggestionPool, random);
+        int numberOfSuggestions = Math.min(3, suggestionPool.size());
+        for (int i = 0; i < numberOfSuggestions; i++) {
+            suggestionList.add(new Suggestion(suggestionPool.get(i)));
+        }
     }
 
     @Override
@@ -50,14 +114,31 @@ public class ChatFragment extends Fragment implements ResponseCallback {
         ImageButton profileButton = view.findViewById(R.id.nav_profile);
         closeButton = view.findViewById(R.id.closeButton);
         chatRecyclerView = view.findViewById(R.id.chatRecyclerView);
+        suggestionsRecyclerView = view.findViewById(R.id.suggestionsRecyclerView);
         messageInput = view.findViewById(R.id.messageInput);
         sendButton = view.findViewById(R.id.sendButton);
 
-        LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext());
-        layoutManager.setStackFromEnd(true);
-        chatRecyclerView.setLayoutManager(layoutManager);
+        LinearLayoutManager chatLayoutManager = new LinearLayoutManager(requireContext());
+        chatLayoutManager.setStackFromEnd(true);
+        chatRecyclerView.setLayoutManager(chatLayoutManager);
         chatAdapter = new ChatMessageAdapter(messageList);
         chatRecyclerView.setAdapter(chatAdapter);
+
+        LinearLayoutManager suggestionsLayoutManager = new LinearLayoutManager(requireContext());
+        suggestionsRecyclerView.setLayoutManager(suggestionsLayoutManager);
+        suggestionsAdapter = new SuggestionsAdapter(suggestionList, (suggestionText, position) -> {
+            if (!isFirstMessageSent) {
+                messageList.add(new ChatMessage(suggestionText, true));
+                chatAdapter.notifyItemInserted(messageList.size() - 1);
+                chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
+                GeminiPro.getResponse(chatModel, suggestionText, this);
+                isFirstMessageSent = true;
+                suggestionList.clear();
+                suggestionsAdapter.notifyDataSetChanged();
+                suggestionsRecyclerView.setVisibility(View.GONE);
+            }
+        });
+        suggestionsRecyclerView.setAdapter(suggestionsAdapter);
 
         GeminiPro geminiPro = new GeminiPro();
         chatModel = geminiPro.getModel().startChat();
@@ -76,7 +157,17 @@ public class ChatFragment extends Fragment implements ResponseCallback {
 
         sendButton.setOnClickListener(v -> {
             String message = messageInput.getText().toString().trim();
-            if (!message.isEmpty()) {
+            if (!message.isEmpty() && !isFirstMessageSent) {
+                messageList.add(new ChatMessage(message, true));
+                chatAdapter.notifyItemInserted(messageList.size() - 1);
+                chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
+                messageInput.setText("");
+                GeminiPro.getResponse(chatModel, message, this);
+                isFirstMessageSent = true;
+                suggestionList.clear();
+                suggestionsAdapter.notifyDataSetChanged();
+                suggestionsRecyclerView.setVisibility(View.GONE);
+            } else if (!message.isEmpty()) {
                 messageList.add(new ChatMessage(message, true));
                 chatAdapter.notifyItemInserted(messageList.size() - 1);
                 chatRecyclerView.smoothScrollToPosition(messageList.size() - 1);
@@ -187,7 +278,6 @@ class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.Message
     private SpannableStringBuilder formatMessageText(String text) {
         SpannableStringBuilder spannable = new SpannableStringBuilder();
 
-        // Remove all asterisks from the text
         text = text.replaceAll("\\*", "");
 
         String[] lines = text.split("\n");
