@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -53,9 +54,10 @@ public class ProfileFragment extends Fragment {
     private static final String TAG = "ProfileFragment";
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
-    private TextView userName, userEmail;
+    private TextView userName;
     private ImageView profileImage;
-    private Button btnLogout, btnAddNewRecipe;
+    private Button btnAddNewRecipe;
+    private ImageButton btnLogout;
     private Cloudinary cloudinary;
     private Dialog recipeDialog;
     private Button btnSelectImage, btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe;
@@ -85,7 +87,6 @@ public class ProfileFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_profile, container, false);
 
         userName = view.findViewById(R.id.profileName);
-        userEmail = view.findViewById(R.id.profileEmail);
         profileImage = view.findViewById(R.id.profilePicture);
         btnLogout = view.findViewById(R.id.btnLogout);
         btnAddNewRecipe = view.findViewById(R.id.btnAddNewRecipe);
@@ -101,7 +102,6 @@ public class ProfileFragment extends Fragment {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             userName.setText(user.getDisplayName() != null ? user.getDisplayName() : "User");
-            userEmail.setText(user.getEmail());
             initializeUserDocument(user);
             loadProfilePicture(user.getEmail());
             fetchUserRecipes(user.getUid());
@@ -514,6 +514,7 @@ public class ProfileFragment extends Fragment {
                             Glide.with(requireContext())
                                     .load(finalImageUrl)
                                     .apply(new RequestOptions()
+                                            .circleCrop()
                                             .diskCacheStrategy(DiskCacheStrategy.ALL)
                                             .placeholder(R.drawable.user)
                                             .error(R.drawable.user))
@@ -601,6 +602,7 @@ public class ProfileFragment extends Fragment {
                             Glide.with(requireContext())
                                     .load(imageUrl)
                                     .apply(new RequestOptions()
+                                            .circleCrop()
                                             .diskCacheStrategy(DiskCacheStrategy.ALL)
                                             .placeholder(R.drawable.user)
                                             .error(R.drawable.user))
