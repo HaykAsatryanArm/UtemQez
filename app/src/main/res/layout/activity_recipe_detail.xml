@@ -11,7 +11,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Image View (top of screen) -->
         <ImageView
             android:id="@+id/detailRecipeImage"
             android:layout_width="match_parent"
@@ -19,7 +18,6 @@
             android:scaleType="centerCrop"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Close button floating over image -->
         <Button
             android:id="@+id/closeButton"
             android:layout_width="40dp"
@@ -33,7 +31,6 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Rounded card that overlaps the bottom of the image -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -42,7 +39,6 @@
             android:clipToPadding="true"
             app:layout_constraintTop_toTopOf="parent">
 
-            <!-- Rounded card that overlaps the bottom of the image -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -56,7 +52,6 @@
                     android:background="@drawable/rounded_top_card"
                     android:paddingTop="32dp">
 
-                    <!-- Rest of your content remains unchanged -->
                     <TextView
                         android:id="@+id/detailRecipeTitle"
                         android:layout_width="match_parent"
@@ -68,7 +63,6 @@
                         android:textStyle="bold"
                         app:layout_constraintTop_toTopOf="parent" />
 
-                    <!-- Time with Icon -->
                     <LinearLayout
                         android:id="@+id/timeLayout"
                         android:layout_width="wrap_content"
@@ -94,7 +88,6 @@
                             android:textSize="16sp" />
                     </LinearLayout>
 
-                    <!-- Nutrition Layout (2x2 Grid) -->
                     <LinearLayout
                         android:id="@+id/nutritionLayout"
                         android:layout_width="match_parent"
@@ -103,7 +96,6 @@
                         android:padding="16dp"
                         app:layout_constraintTop_toBottomOf="@id/timeLayout">
 
-                        <!-- Row 1: Carbs and Protein -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -111,7 +103,6 @@
                             android:gravity="center"
                             android:orientation="horizontal">
 
-                            <!-- Carbs -->
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -134,7 +125,6 @@
                                     android:textSize="16sp" />
                             </LinearLayout>
 
-                            <!-- Protein -->
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -158,7 +148,6 @@
                             </LinearLayout>
                         </LinearLayout>
 
-                        <!-- Row 2: Kcal and Fats -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -167,7 +156,6 @@
                             android:gravity="center"
                             android:orientation="horizontal">
 
-                            <!-- Kcal -->
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -190,7 +178,6 @@
                                     android:textSize="16sp" />
                             </LinearLayout>
 
-                            <!-- Fats -->
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -215,7 +202,6 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- Toggle Headers -->
                     <LinearLayout
                         android:id="@+id/toggleHeaders"
                         android:layout_width="match_parent"
@@ -254,7 +240,6 @@
                             android:textSize="18sp" />
                     </LinearLayout>
 
-                    <!-- Content Container -->
                     <LinearLayout
                         android:id="@+id/contentContainer"
                         android:layout_width="match_parent"
@@ -262,7 +247,6 @@
                         android:orientation="vertical"
                         app:layout_constraintTop_toBottomOf="@id/toggleHeaders">
 
-                        <!-- Ingredients Content -->
                         <LinearLayout
                             android:id="@+id/ingredientsContent"
                             android:layout_width="match_parent"
@@ -280,7 +264,6 @@
                                 android:lineSpacingExtra="8dp" />
                         </LinearLayout>
 
-                        <!-- Instructions Content -->
                         <LinearLayout
                             android:id="@+id/instructionsContent"
                             android:layout_width="match_parent"

@@ -43,7 +43,6 @@ public class LikedRecipesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_liked_recipes, container, false);
 
-        // Initialize NavController
         navController = Navigation.findNavController(requireActivity(), R.id.nav_host_fragment);
         if (navController == null) {
             Log.e(TAG, "NavController not found");
@@ -62,7 +61,6 @@ public class LikedRecipesFragment extends Fragment {
         likedRecipesAdapter = new RecipeAdapter(likedRecipesList, R.layout.recipe_item_search);
         likedRecipesRecyclerView.setAdapter(likedRecipesAdapter);
 
-        // Add scroll listener for pagination
         likedRecipesRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -133,7 +131,6 @@ public class LikedRecipesFragment extends Fragment {
                         return;
                     }
 
-                    // Convert string IDs to integers for whereIn query
                     List<Integer> likedRecipeIdsInt = new ArrayList<>();
                     for (String id : likedRecipeIds) {
                         try {

@@ -28,6 +28,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -127,25 +128,46 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
 
             db.collection("users").document(user.getUid()).get()
                     .addOnSuccessListener(documentSnapshot -> {
-                        if (!isAdded()) return; // Check if fragment is attached
+                        if (!isAdded()) return;
                         Boolean isAdmin = documentSnapshot.getBoolean("isAdmin");
                         btnAdminDashboard.setVisibility((isAdmin != null && isAdmin) ? View.VISIBLE : View.GONE);
                         Log.d(TAG, "Admin status checked: isAdmin=" + isAdmin);
                     })
                     .addOnFailureListener(e -> {
-                        if (!isAdded()) return; // Check if fragment is attached
+                        if (!isAdded()) return;
                         Log.e(TAG, "Error checking admin status: " + e.getMessage(), e);
                     });
         } else {
-            Log.w(TAG, "No user logged in");
-            Navigation.findNavController(view).navigate(R.id.action_profileFragment_to_loginActivity);
+            Log.w(TAG, "No user logged in, attempting to redirect to LoginActivity");
+            view.post(() -> {
+                try {
+                    NavController navController = Navigation.findNavController(view);
+                    navController.navigate(R.id.action_profileFragment_to_loginActivity);
+                } catch (IllegalStateException e) {
+                    Log.e(TAG, "NavController not found, starting LoginActivity directly", e);
+                    Intent intent = new Intent(requireContext(), LoginActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    requireActivity().finish();
+                }
+            });
         }
 
         profileImage.setOnClickListener(v -> pickImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI)));
         btnAddNewRecipe.setOnClickListener(v -> showRecipeFormDialog());
         btnLogout.setOnClickListener(v -> {
             mAuth.signOut();
-            Navigation.findNavController(v).navigate(R.id.action_profileFragment_to_loginActivity);
+            v.post(() -> {
+                try {
+                    Navigation.findNavController(v).navigate(R.id.action_profileFragment_to_loginActivity);
+                } catch (IllegalStateException e) {
+                    Log.e(TAG, "NavController not found, starting LoginActivity directly", e);
+                    Intent intent = new Intent(requireContext(), LoginActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    requireActivity().finish();
+                }
+            });
         });
         btnAdminDashboard.setOnClickListener(v -> {
             Intent intent = new Intent(requireContext(), AdminDashboardActivity.class);
@@ -158,7 +180,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
     private void debugAllRecipes() {
         Log.d(TAG, "Debugging all recipes in Firestore");
         db.collection("recipes").get().addOnCompleteListener(task -> {
-            if (!isAdded()) return; // Check if fragment is attached
+            if (!isAdded()) return;
             if (task.isSuccessful()) {
                 Log.d(TAG, "Total recipes in collection: " + task.getResult().size());
                 for (QueryDocumentSnapshot doc : task.getResult()) {
@@ -185,7 +207,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                 .set(userData, SetOptions.mergeFields("email", "displayName"))
                 .addOnSuccessListener(aVoid -> Log.d(TAG, "User document initialized for: " + userId))
                 .addOnFailureListener(e -> {
-                    if (!isAdded()) return; // Check if fragment is attached
+                    if (!isAdded()) return;
                     Log.e(TAG, "Failed to initialize user document: " + e.getMessage(), e);
                 });
     }
@@ -198,7 +220,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                 .addOnCompleteListener(task -> {
                     if (!isAdded()) {
                         Log.w(TAG, "Fragment not attached, skipping fetchUserRecipes callback for userId: " + userId);
-                        return; // Exit early if fragment is not attached
+                        return;
                     }
                     if (task.isSuccessful()) {
                         userRecipesList.clear();
@@ -224,7 +246,8 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                                 recipe.setReadyInMinutes(document.getLong("readyInMinutes") != null ? document.getLong("readyInMinutes").intValue() : 0);
                                 recipe.setSourceUrl(document.getString("sourceUrl") != null ? document.getString("sourceUrl") : "");
                                 recipe.setInstructions(document.getString("instructions") != null ? document.getString("instructions") : "");
-                                recipe.setImageUrl(document.getString("imageUrl") != null ? document.getString("imageUrl") : "");
+                                String imageUrl = document.getString("imageUrl") != null ? document.getString("imageUrl") : "";
+                                recipe.setImageUrl(imageUrl);
                                 recipe.setCategory((List<String>) document.get("category") != null ? (List<String>) document.get("category") : new ArrayList<>());
                                 recipe.setUserId(document.getString("userId") != null ? document.getString("userId") : "");
                                 recipe.setApproved(document.getBoolean("isApproved") != null ? document.getBoolean("isApproved") : false);
@@ -810,7 +833,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                                     .load(bitmap)
                                     .apply(new RequestOptions()
                                             .transform(new RoundedCorners(22))
-                                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                            .diskCacheStrategy(DiskCacheStrategy.NONE)
                                             .placeholder(R.drawable.placeholder_recipe)
                                             .error(R.drawable.placeholder_recipe))
                                     .into(recipeImagePreview);
@@ -858,7 +881,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                                     .load(finalImageUrl)
                                     .apply(new RequestOptions()
                                             .circleCrop()
-                                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                            .diskCacheStrategy(DiskCacheStrategy.NONE)
                                             .placeholder(R.drawable.user)
                                             .error(R.drawable.user))
                                     .into(profileImage);
@@ -872,7 +895,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                                     .load(finalImageUrl1)
                                     .apply(new RequestOptions()
                                             .transform(new RoundedCorners(22))
-                                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                            .diskCacheStrategy(DiskCacheStrategy.NONE)
                                             .placeholder(R.drawable.placeholder_recipe)
                                             .error(R.drawable.placeholder_recipe))
                                     .into(recipeImagePreview);
@@ -960,7 +983,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                                     .load(imageUrl)
                                     .apply(new RequestOptions()
                                             .circleCrop()
-                                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                            .diskCacheStrategy(DiskCacheStrategy.NONE)
                                             .placeholder(R.drawable.user)
                                             .error(R.drawable.user))
                                     .into(profileImage);

@@ -32,7 +32,7 @@ public class SearchFragment extends Fragment {
     private RecyclerView searchRecipesRecyclerView;
     private RecipeAdapter searchRecipesAdapter;
     private final List<Recipe> searchRecipesList = new ArrayList<>();
-    private final Set<Integer> searchRecipeIds = new HashSet<>(); // Changed to Set<Integer>
+    private final Set<Integer> searchRecipeIds = new HashSet<>();
     private DocumentSnapshot lastSearchDoc = null;
     private boolean isLoadingSearch = false;
     private static final int PAGE_SIZE = 10;
@@ -131,7 +131,7 @@ public class SearchFragment extends Fragment {
                             Log.w(TAG, "Null recipe for document: " + document.getId());
                             continue;
                         }
-                        recipe.setUserId(document.getId()); // Set userId from document ID
+                        recipe.setUserId(document.getId());
                         boolean matches = lowerQuery.isEmpty() || matchesQuery(recipe, queryVariations);
                         if (!searchRecipeIds.contains(recipe.getId()) && matches) {
                             newRecipes.add(recipe);

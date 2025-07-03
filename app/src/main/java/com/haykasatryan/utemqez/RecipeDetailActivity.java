@@ -44,7 +44,7 @@ import java.util.regex.Pattern;
 public class RecipeDetailActivity extends AppCompatActivity {
     private static final String TAG = "RecipeDetailActivity";
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
-    private static final long COMMAND_DEBOUNCE_TIME = 1000; // 1 second debounce time
+    private static final long COMMAND_DEBOUNCE_TIME = 1000;
 
     private Recipe recipe;
     private TextView detailRecipeTitle, detailReadyInMinutes, detailIngredients, detailInstructions;
@@ -79,7 +79,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_recipe_detail);
 
-        // Audio setup
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, 0, 0);
         int maxMediaVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
@@ -125,7 +124,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
         detailRecipeTitle.setText(recipe.getTitle() != null ? recipe.getTitle() : "Untitled");
         detailReadyInMinutes.setText(recipe.getReadyInMinutes() > 0 ? recipe.getReadyInMinutes() + " Min" : "N/A");
 
-        // Load recipe image
         String imageUrl = recipe.getImageUrl();
         RequestOptions options = new RequestOptions()
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -142,7 +140,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
             detailRecipeImage.setImageResource(R.drawable.recipe_image);
         }
 
-        // Set nutrition data
         Nutrition nutrition = recipe.getNutrition();
         if (nutrition != null) {
             caloriesText.setText(nutrition.getCalories() != null ? nutrition.getCalories() : "N/A");
@@ -157,7 +154,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
             carbsText.setText("N/A");
         }
 
-        // Set ingredients
         List<Ingredient> ingredients = recipe.getIngredients();
         if (ingredients != null && !ingredients.isEmpty()) {
             StringBuilder ingredientsText = new StringBuilder();
@@ -174,7 +170,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
             detailIngredients.setText("No ingredients available");
         }
 
-        // Parse and set instructions
         instructionSteps = parseInstructions(recipe.getInstructions());
         SpannableStringBuilder instructionsBuilder = new SpannableStringBuilder();
         for (InstructionStep step : instructionSteps) {
@@ -197,7 +192,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
                 if (!step.endsWith(".")) {
                     step += ".";
                 }
-                // Keep the numbering for display
                 String displayText = step.replaceFirst("^\\d+\\.\\s*", "");
                 result.add(new InstructionStep(step, displayText, step));
             }
@@ -211,7 +205,6 @@ public class RecipeDetailActivity extends AppCompatActivity {
                     if (!step.endsWith(".")) {
                         step += ".";
                     }
-                    // Add numbering if it wasn't present
                     String numberedText = (i+1) + ". " + step;
                     result.add(new InstructionStep(numberedText, step, numberedText));
                 }
@@ -397,14 +390,12 @@ public class RecipeDetailActivity extends AppCompatActivity {
         }
 
         if (currentInstructionIndex + 1 < instructionSteps.size()) {
-            // Reset previous highlighting
             resetAllStepHighlights();
 
             currentInstructionIndex++;
             InstructionStep step = instructionSteps.get(currentInstructionIndex);
             Log.d(TAG, "Speaking step " + currentInstructionIndex + ": " + step.originalText);
 
-            // Highlight the current step in the instructions text
             highlightCurrentStep(currentInstructionIndex);
 
             Bundle params = new Bundle();
@@ -469,10 +460,8 @@ public class RecipeDetailActivity extends AppCompatActivity {
         voiceButton.setText("Stop Voice Instructions");
         currentInstructionIndex = -1;
 
-        // Start listening first
         restartListening();
 
-        // Then read first instruction after a short delay
         handler.postDelayed(this::readNextInstruction, 300);
 
         Toast.makeText(this, "Say 'Next' or 'Continue' to hear the next instruction",

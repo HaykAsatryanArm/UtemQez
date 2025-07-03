@@ -9,7 +9,6 @@
     android:clipToPadding="false"
     android:elevation="8dp">
 
-    <!-- Scrollable Content -->
     <ScrollView
         android:id="@+id/recipeForm"
         android:layout_width="match_parent"
@@ -27,14 +26,12 @@
             android:orientation="vertical"
             android:padding="8dp">
 
-            <!-- Recipe Image Preview -->
             <FrameLayout
                 android:id="@+id/recipeImageContainer"
                 android:layout_width="match_parent"
                 android:layout_height="200dp"
                 android:layout_marginBottom="8dp">
 
-                <!-- Background Ring -->
                 <View
                     android:id="@+id/recipeImageRing"
                     android:layout_width="match_parent"
@@ -44,7 +41,6 @@
                     android:layout_marginEnd="5dp"
                     android:background="@drawable/placeholder_recipe" />
 
-                <!-- Recipe Image -->
                 <ImageView
                     android:id="@+id/recipeImagePreview"
                     android:layout_width="match_parent"
@@ -55,7 +51,6 @@
                     android:clipToOutline="true"
                     android:contentDescription="Recipe image preview" />
 
-                <!-- Select Image Hint -->
                 <TextView
                     android:id="@+id/selectImageHint"
                     android:layout_width="wrap_content"
@@ -69,7 +64,6 @@
 
             </FrameLayout>
 
-            <!-- Recipe Title -->
             <EditText
                 android:id="@+id/recipeTitle"
                 android:layout_width="match_parent"
@@ -81,7 +75,6 @@
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="8dp" />
 
-            <!-- Recipe Time -->
             <EditText
                 android:id="@+id/recipeTime"
                 android:layout_width="match_parent"
@@ -93,7 +86,6 @@
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Ingredients Title -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -103,7 +95,6 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Ingredients Container -->
             <LinearLayout
                 android:id="@+id/ingredientsContainer"
                 android:layout_width="match_parent"
@@ -111,7 +102,6 @@
                 android:orientation="vertical"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Add Ingredient Button -->
             <Button
                 android:id="@+id/btnAddIngredient"
                 android:layout_width="30dp"
@@ -123,7 +113,6 @@
                 android:backgroundTint="@color/colorPrimary"
                 android:layout_marginBottom="8dp" />
 
-            <!-- Instructions Title -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -133,7 +122,6 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Instructions Container -->
             <LinearLayout
                 android:id="@+id/instructionsContainer"
                 android:layout_width="match_parent"
@@ -141,7 +129,6 @@
                 android:orientation="vertical"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Add Instruction Button -->
             <Button
                 android:id="@+id/btnAddInstruction"
                 android:layout_width="30dp"
@@ -153,7 +140,6 @@
                 android:backgroundTint="@color/colorPrimary"
                 android:layout_marginBottom="8dp" />
 
-            <!-- Nutrition Title -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -163,14 +149,12 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Nutrition Inputs (2x2 Table) -->
             <TableLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:stretchColumns="*"
                 android:layout_marginBottom="4dp">
 
-                <!-- Top Row: Carbs (Left), Protein (Right) -->
                 <TableRow
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
@@ -200,7 +184,6 @@
                         android:layout_marginBottom="4dp" />
                 </TableRow>
 
-                <!-- Bottom Row: Calories (Left), Fat (Right) -->
                 <TableRow
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -230,7 +213,6 @@
                 </TableRow>
             </TableLayout>
 
-            <!-- Help Get Nutritions from AI Button -->
             <Button
                 android:id="@+id/btnGetNutritionFromAI"
                 android:layout_width="wrap_content"
@@ -243,7 +225,6 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="8dp" />
 
-            <!-- Categories Title -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -253,7 +234,6 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Categories Container -->
             <LinearLayout
                 android:id="@+id/categoriesContainer"
                 android:layout_width="match_parent"
@@ -261,7 +241,6 @@
                 android:orientation="vertical"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Add Category Button -->
             <Button
                 android:id="@+id/btnAddCategory"
                 android:layout_width="30dp"
@@ -273,7 +252,6 @@
                 android:backgroundTint="@color/colorPrimary"
                 android:layout_marginBottom="8dp" />
 
-            <!-- Post Recipe Button -->
             <Button
                 android:id="@+id/btnPostRecipe"
                 android:layout_width="match_parent"
