@@ -37,6 +37,7 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.google.ai.client.generativeai.java.ChatFutures;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -50,9 +51,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class ProfileFragment extends Fragment {
+public class ProfileFragment extends Fragment implements ResponseCallback {
 
     private static final String TAG = "ProfileFragment";
     private FirebaseAuth mAuth;
@@ -65,13 +69,15 @@ public class ProfileFragment extends Fragment {
     private Dialog recipeDialog;
     private EditText recipeTitle, recipeTime;
     private ImageView recipeImagePreview;
+    private TextView selectImageHint;
     private LinearLayout ingredientsContainer, instructionsContainer, categoriesContainer;
-    private Button btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe;
+    private Button btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe, btnGetNutritionFromAI;
     private EditText nutritionCalories, nutritionProtein, nutritionFat, nutritionCarbs;
     private String recipeImageUrl = "";
     private RecyclerView userRecipesRecyclerView;
     private RecipeAdapter userRecipesAdapter;
     private final List<Recipe> userRecipesList = new ArrayList<>();
+    private ChatFutures chatModel;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -83,6 +89,8 @@ public class ProfileFragment extends Fragment {
                 "api_key", "882433745744291",
                 "api_secret", "tPtmtB9HaZ7pTv6dn7lEJJssOh0"
         ));
+        GeminiPro geminiPro = new GeminiPro();
+        chatModel = geminiPro.getModel().startChat();
     }
 
     @Override
@@ -111,7 +119,6 @@ public class ProfileFragment extends Fragment {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             Log.d(TAG, "Current user UID: " + user.getUid());
-            Toast.makeText(requireContext(), "Logged in as: " + user.getUid(), Toast.LENGTH_LONG).show();
             userName.setText(user.getDisplayName() != null ? user.getDisplayName() : "User");
             initializeUserDocument(user);
             loadProfilePicture(user.getEmail());
@@ -120,11 +127,15 @@ public class ProfileFragment extends Fragment {
 
             db.collection("users").document(user.getUid()).get()
                     .addOnSuccessListener(documentSnapshot -> {
+                        if (!isAdded()) return; // Check if fragment is attached
                         Boolean isAdmin = documentSnapshot.getBoolean("isAdmin");
                         btnAdminDashboard.setVisibility((isAdmin != null && isAdmin) ? View.VISIBLE : View.GONE);
                         Log.d(TAG, "Admin status checked: isAdmin=" + isAdmin);
                     })
-                    .addOnFailureListener(e -> Log.e(TAG, "Error checking admin status: " + e.getMessage(), e));
+                    .addOnFailureListener(e -> {
+                        if (!isAdded()) return; // Check if fragment is attached
+                        Log.e(TAG, "Error checking admin status: " + e.getMessage(), e);
+                    });
         } else {
             Log.w(TAG, "No user logged in");
             Navigation.findNavController(view).navigate(R.id.action_profileFragment_to_loginActivity);
@@ -147,6 +158,7 @@ public class ProfileFragment extends Fragment {
     private void debugAllRecipes() {
         Log.d(TAG, "Debugging all recipes in Firestore");
         db.collection("recipes").get().addOnCompleteListener(task -> {
+            if (!isAdded()) return; // Check if fragment is attached
             if (task.isSuccessful()) {
                 Log.d(TAG, "Total recipes in collection: " + task.getResult().size());
                 for (QueryDocumentSnapshot doc : task.getResult()) {
@@ -172,7 +184,10 @@ public class ProfileFragment extends Fragment {
         db.collection("users").document(userId)
                 .set(userData, SetOptions.mergeFields("email", "displayName"))
                 .addOnSuccessListener(aVoid -> Log.d(TAG, "User document initialized for: " + userId))
-                .addOnFailureListener(e -> Log.e(TAG, "Failed to initialize user document: " + e.getMessage(), e));
+                .addOnFailureListener(e -> {
+                    if (!isAdded()) return; // Check if fragment is attached
+                    Log.e(TAG, "Failed to initialize user document: " + e.getMessage(), e);
+                });
     }
 
     private void fetchUserRecipes(String userId) {
@@ -181,6 +196,10 @@ public class ProfileFragment extends Fragment {
                 .whereEqualTo("userId", userId)
                 .get()
                 .addOnCompleteListener(task -> {
+                    if (!isAdded()) {
+                        Log.w(TAG, "Fragment not attached, skipping fetchUserRecipes callback for userId: " + userId);
+                        return; // Exit early if fragment is not attached
+                    }
                     if (task.isSuccessful()) {
                         userRecipesList.clear();
                         int recipeCount = 0;
@@ -242,13 +261,16 @@ public class ProfileFragment extends Fragment {
                         }
                         int finalRecipeCount = recipeCount;
                         requireActivity().runOnUiThread(() -> {
+                            if (!isAdded()) {
+                                Log.w(TAG, "Fragment not attached, skipping UI update for user recipes");
+                                return;
+                            }
                             userRecipesAdapter.updateList(userRecipesList);
                             userRecipesRecyclerView.setVisibility(userRecipesList.isEmpty() ? View.GONE : View.VISIBLE);
                             TextView noRecipesText = requireView().findViewById(R.id.noRecipesText);
                             noRecipesText.setVisibility(userRecipesList.isEmpty() ? View.VISIBLE : View.GONE);
                             userRecipesRecyclerView.scheduleLayoutAnimation();
                             userRecipesRecyclerView.invalidate();
-                            Toast.makeText(requireContext(), "Recipes loaded: " + userRecipesList.size(), Toast.LENGTH_SHORT).show();
                             Log.d(TAG, "Fetched " + finalRecipeCount + " user recipes for userId: " + userId);
                             if (userRecipesList.isEmpty()) {
                                 Log.w(TAG, "No recipes added to userRecipesList. Check Firestore data, security rules, or parsing logic.");
@@ -256,10 +278,14 @@ public class ProfileFragment extends Fragment {
                         });
                     } else {
                         requireActivity().runOnUiThread(() -> {
+                            if (!isAdded()) {
+                                Log.w(TAG, "Fragment not attached, skipping error UI update for user recipes");
+                                return;
+                            }
                             TextView noRecipesText = requireView().findViewById(R.id.noRecipesText);
                             noRecipesText.setVisibility(View.VISIBLE);
                             userRecipesRecyclerView.setVisibility(View.GONE);
-                            Toast.makeText(requireContext(), "Failed to fetch recipes: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
+                            Toast.makeText(requireContext(), "Failed to get recipes: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                         });
                         Log.e(TAG, "Error fetching user recipes: " + task.getException().getMessage(), task.getException());
                     }
@@ -293,13 +319,25 @@ public class ProfileFragment extends Fragment {
                 .document(String.valueOf(recipe.getId()))
                 .delete()
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(requireContext(), "Recipe deleted successfully", Toast.LENGTH_SHORT).show();
-                    fetchUserRecipes(mAuth.getCurrentUser().getUid());
+                    if (!isAdded()) {
+                        Log.w(TAG, "Fragment not attached, skipping UI update for recipe deletion: " + recipe.getId());
+                        return;
+                    }
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Recipe deleted successfully", Toast.LENGTH_SHORT).show();
+                        fetchUserRecipes(Objects.requireNonNull(mAuth.getCurrentUser()).getUid());
+                    });
                     Log.d(TAG, "Recipe deleted: " + recipe.getId());
                 })
                 .addOnFailureListener(e -> {
+                    if (!isAdded()) {
+                        Log.w(TAG, "Fragment not attached, skipping error UI update for recipe deletion: " + recipe.getId());
+                        return;
+                    }
+                    requireActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Failed to delete recipe: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
                     Log.e(TAG, "Error deleting recipe: " + e.getMessage(), e);
-                    Toast.makeText(requireContext(), "Failed to delete recipe", Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -341,6 +379,7 @@ public class ProfileFragment extends Fragment {
         recipeTitle = recipeDialog.findViewById(R.id.recipeTitle);
         recipeTime = recipeDialog.findViewById(R.id.recipeTime);
         recipeImagePreview = recipeDialog.findViewById(R.id.recipeImagePreview);
+        selectImageHint = recipeDialog.findViewById(R.id.selectImageHint);
         ingredientsContainer = recipeDialog.findViewById(R.id.ingredientsContainer);
         btnAddIngredient = recipeDialog.findViewById(R.id.btnAddIngredient);
         instructionsContainer = recipeDialog.findViewById(R.id.instructionsContainer);
@@ -352,14 +391,15 @@ public class ProfileFragment extends Fragment {
         categoriesContainer = recipeDialog.findViewById(R.id.categoriesContainer);
         btnAddCategory = recipeDialog.findViewById(R.id.btnAddCategory);
         btnPostRecipe = recipeDialog.findViewById(R.id.btnPostRecipe);
+        btnGetNutritionFromAI = recipeDialog.findViewById(R.id.btnGetNutritionFromAI);
 
-        if (recipeTitle == null || recipeTime == null || recipeImagePreview == null ||
+        if (recipeTitle == null || recipeTime == null || recipeImagePreview == null || selectImageHint == null ||
                 ingredientsContainer == null || btnAddIngredient == null ||
                 instructionsContainer == null || btnAddInstruction == null ||
                 nutritionCalories == null || nutritionProtein == null ||
                 nutritionFat == null || nutritionCarbs == null ||
                 categoriesContainer == null || btnAddCategory == null ||
-                btnPostRecipe == null) {
+                btnPostRecipe == null || btnGetNutritionFromAI == null) {
             Log.e(TAG, "One or more views in recipe form dialog not found");
             Toast.makeText(requireContext(), "Error initializing recipe form", Toast.LENGTH_SHORT).show();
             recipeDialog.dismiss();
@@ -368,6 +408,7 @@ public class ProfileFragment extends Fragment {
 
         recipeImagePreview.setOnClickListener(v -> {
             recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
+            selectImageHint.setVisibility(View.VISIBLE);
             pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI));
         });
         btnAddIngredient.setOnClickListener(v -> addIngredientField());
@@ -377,6 +418,18 @@ public class ProfileFragment extends Fragment {
             if (validateRecipeForm()) {
                 postRecipe();
                 recipeDialog.dismiss();
+            }
+        });
+        btnGetNutritionFromAI.setOnClickListener(v -> {
+            if (validateRecipeFormForAI()) {
+                requestNutritionFromAI();
+            } else {
+                Toast toast = Toast.makeText(requireContext(), "Please fill all recipe information", Toast.LENGTH_SHORT);
+                TextView toastTextView = toast.getView().findViewById(android.R.id.message);
+                if (toastTextView != null) {
+                    toastTextView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_light));
+                }
+                toast.show();
             }
         });
 
@@ -403,6 +456,125 @@ public class ProfileFragment extends Fragment {
             }
         }
         return true;
+    }
+
+    private boolean validateRecipeFormForAI() {
+        if (recipeTitle.getText().toString().trim().isEmpty()) {
+            return false;
+        }
+        if (recipeTime.getText().toString().trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Integer.parseInt(recipeTime.getText().toString().trim());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        boolean hasIngredients = false;
+        for (int i = 0; i < ingredientsContainer.getChildCount(); i++) {
+            LinearLayout layout = (LinearLayout) ingredientsContainer.getChildAt(i);
+            EditText name = (EditText) layout.getChildAt(0);
+            EditText amount = (EditText) layout.getChildAt(1);
+            if (!name.getText().toString().trim().isEmpty() && !amount.getText().toString().trim().isEmpty()) {
+                hasIngredients = true;
+                break;
+            }
+        }
+        if (!hasIngredients) {
+            return false;
+        }
+        boolean hasInstructions = false;
+        for (int i = 0; i < instructionsContainer.getChildCount(); i++) {
+            EditText instruction = (EditText) instructionsContainer.getChildAt(i);
+            if (!instruction.getText().toString().trim().isEmpty()) {
+                hasInstructions = true;
+                break;
+            }
+        }
+        if (!hasInstructions) {
+            return false;
+        }
+        boolean hasCategories = false;
+        for (int i = 0; i < categoriesContainer.getChildCount(); i++) {
+            EditText category = (EditText) categoriesContainer.getChildAt(i);
+            if (!category.getText().toString().trim().isEmpty()) {
+                hasCategories = true;
+                break;
+            }
+        }
+        return hasCategories;
+    }
+
+    private void requestNutritionFromAI() {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Calculate the nutritional values for the following recipe. Provide only numerical values (no units) for Calories, Protein, Fat, and Carbs. Format the response as: 'Calories: <number>, Protein: <number>, Fat: <number>, Carbs: <number>'.\n\n");
+        prompt.append("Recipe Title: ").append(recipeTitle.getText().toString().trim()).append("\n");
+        prompt.append("Preparation Time: ").append(recipeTime.getText().toString().trim()).append(" minutes\n");
+
+        prompt.append("Ingredients:\n");
+        for (int i = 0; i < ingredientsContainer.getChildCount(); i++) {
+            LinearLayout layout = (LinearLayout) ingredientsContainer.getChildAt(i);
+            EditText name = (EditText) layout.getChildAt(0);
+            EditText amount = (EditText) layout.getChildAt(1);
+            if (!name.getText().toString().trim().isEmpty() && !amount.getText().toString().trim().isEmpty()) {
+                prompt.append("- ").append(amount.getText().toString().trim()).append(" ").append(name.getText().toString().trim()).append("\n");
+            }
+        }
+
+        prompt.append("Instructions:\n");
+        for (int i = 0; i < instructionsContainer.getChildCount(); i++) {
+            EditText instruction = (EditText) instructionsContainer.getChildAt(i);
+            String instructionText = instruction.getText().toString().trim();
+            if (!instructionText.isEmpty()) {
+                prompt.append((i + 1)).append(". ").append(instructionText).append("\n");
+            }
+        }
+
+        prompt.append("Categories:\n");
+        for (int i = 0; i < categoriesContainer.getChildCount(); i++) {
+            EditText category = (EditText) categoriesContainer.getChildAt(i);
+            if (!category.getText().toString().trim().isEmpty()) {
+                prompt.append("- ").append(category.getText().toString().trim()).append("\n");
+            }
+        }
+
+        Log.d(TAG, "Sending AI prompt: " + prompt.toString());
+        GeminiPro.getResponse(chatModel, prompt.toString(), this);
+    }
+
+    @Override
+    public void onResponse(String response) {
+        if (!isAdded()) {
+            Log.w(TAG, "Fragment not attached, skipping AI response handling");
+            return;
+        }
+        requireActivity().runOnUiThread(() -> {
+            Log.d(TAG, "AI response: " + response);
+            Pattern pattern = Pattern.compile("Calories: (\\d+), Protein: (\\d+\\.?\\d*), Fat: (\\d+\\.?\\d*), Carbs: (\\d+\\.?\\d*)");
+            Matcher matcher = pattern.matcher(response);
+            if (matcher.find()) {
+                nutritionCalories.setText(matcher.group(1));
+                nutritionProtein.setText(matcher.group(2));
+                nutritionFat.setText(matcher.group(3));
+                nutritionCarbs.setText(matcher.group(4));
+                Toast.makeText(requireContext(), "Nutrition values updated from AI", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(requireContext(), "Failed to parse AI nutrition values", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Invalid AI response format: " + response);
+            }
+        });
+    }
+
+    @Override
+    public void onError(Throwable throwable) {
+        if (!isAdded()) {
+            Log.w(TAG, "Fragment not attached, skipping AI error handling");
+            return;
+        }
+        requireActivity().runOnUiThread(() -> {
+            Log.e(TAG, "AI error: " + throwable.getMessage(), throwable);
+            Toast.makeText(requireContext(), "Failed to get nutrition values: " + throwable.getMessage(), Toast.LENGTH_LONG).show();
+        });
     }
 
     private void addIngredientField() {
@@ -486,7 +658,6 @@ public class ProfileFragment extends Fragment {
         }
 
         int recipeId = new Random().nextInt(900000) + 100000;
-        Log.d(TAG, "Posting recipe with ID: " + recipeId + ", userId: " + user.getUid());
 
         List<Map<String, String>> ingredients = new ArrayList<>();
         for (int i = 0; i < ingredientsContainer.getChildCount(); i++) {
@@ -556,12 +727,20 @@ public class ProfileFragment extends Fragment {
                 .document(String.valueOf(recipeId))
                 .set(recipe)
                 .addOnSuccessListener(aVoid -> {
+                    if (!isAdded()) {
+                        Log.w(TAG, "Fragment not attached, skipping UI update for recipe post: " + recipeId);
+                        return;
+                    }
                     Toast.makeText(requireContext(), "Recipe posted successfully, pending approval", Toast.LENGTH_SHORT).show();
                     clearForm();
                     fetchUserRecipes(user.getUid());
                     Log.d(TAG, "Recipe posted: " + recipeId);
                 })
                 .addOnFailureListener(e -> {
+                    if (!isAdded()) {
+                        Log.w(TAG, "Fragment not attached, skipping error UI update for recipe post: " + recipeId);
+                        return;
+                    }
                     Log.e(TAG, "Error posting recipe: " + e.getMessage(), e);
                     Toast.makeText(requireContext(), "Failed to post recipe", Toast.LENGTH_SHORT).show();
                 });
@@ -571,6 +750,7 @@ public class ProfileFragment extends Fragment {
         recipeTitle.setText("");
         recipeTime.setText("");
         recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
+        selectImageHint.setVisibility(View.VISIBLE);
         recipeImageUrl = "";
         ingredientsContainer.removeAllViews();
         instructionsContainer.removeAllViews();
@@ -587,6 +767,10 @@ public class ProfileFragment extends Fragment {
     private final ActivityResultLauncher<Intent> pickImage = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
+                if (!isAdded()) {
+                    Log.w(TAG, "Fragment not attached, skipping profile image selection");
+                    return;
+                }
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     Uri imageUri = result.getData().getData();
                     Log.d(TAG, "Profile image selected: " + imageUri);
@@ -611,6 +795,10 @@ public class ProfileFragment extends Fragment {
     private final ActivityResultLauncher<Intent> pickRecipeImage = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
+                if (!isAdded()) {
+                    Log.w(TAG, "Fragment not attached, skipping recipe image selection");
+                    return;
+                }
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     Uri imageUri = result.getData().getData();
                     Log.d(TAG, "Recipe image selected: " + imageUri);
@@ -626,18 +814,22 @@ public class ProfileFragment extends Fragment {
                                             .placeholder(R.drawable.placeholder_recipe)
                                             .error(R.drawable.placeholder_recipe))
                                     .into(recipeImagePreview);
+                            selectImageHint.setVisibility(View.GONE);
                             uploadImageToCloudinary(bitmap, false);
                         } else {
                             Log.e(TAG, "Failed to decode bitmap");
                             recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
+                            selectImageHint.setVisibility(View.VISIBLE);
                         }
                     } catch (FileNotFoundException e) {
                         Log.e(TAG, "File not found", e);
                         recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
+                        selectImageHint.setVisibility(View.VISIBLE);
                     }
                 } else {
                     Log.d(TAG, "Recipe image selection cancelled or failed");
                     recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
+                    selectImageHint.setVisibility(View.VISIBLE);
                 }
             }
     );
@@ -647,6 +839,7 @@ public class ProfileFragment extends Fragment {
             try {
                 File file = convertBitmapToFile(bitmap);
                 if (file == null) {
+                    if (!isAdded()) return;
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(requireContext(), "Error preparing image for upload", Toast.LENGTH_SHORT).show();
                     });
@@ -659,6 +852,7 @@ public class ProfileFragment extends Fragment {
                     if (isProfilePicture) {
                         saveProfilePictureToFirestore(imageUrl);
                         String finalImageUrl = imageUrl;
+                        if (!isAdded()) return;
                         requireActivity().runOnUiThread(() -> {
                             Glide.with(requireContext())
                                     .load(finalImageUrl)
@@ -672,6 +866,7 @@ public class ProfileFragment extends Fragment {
                     } else {
                         recipeImageUrl = imageUrl;
                         String finalImageUrl1 = imageUrl;
+                        if (!isAdded()) return;
                         requireActivity().runOnUiThread(() -> {
                             Glide.with(requireContext())
                                     .load(finalImageUrl1)
@@ -681,16 +876,19 @@ public class ProfileFragment extends Fragment {
                                             .placeholder(R.drawable.placeholder_recipe)
                                             .error(R.drawable.placeholder_recipe))
                                     .into(recipeImagePreview);
+                            selectImageHint.setVisibility(View.GONE);
                         });
                     }
                     Log.d(TAG, "Image uploaded: " + imageUrl);
                 } else {
+                    if (!isAdded()) return;
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(requireContext(), "Image upload returned no URL", Toast.LENGTH_SHORT).show();
                     });
                     Log.e(TAG, "No URL returned from Cloudinary");
                 }
             } catch (Exception e) {
+                if (!isAdded()) return;
                 requireActivity().runOnUiThread(() -> {
                     Toast.makeText(requireContext(), "Failed to upload image: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 });
@@ -707,6 +905,7 @@ public class ProfileFragment extends Fragment {
             Log.d(TAG, "File created at: " + file.getAbsolutePath() + ", size: " + file.length());
             return file;
         } catch (Exception e) {
+            if (!isAdded()) return null;
             requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Error converting image: " + e.getMessage(), Toast.LENGTH_LONG).show());
             Log.e(TAG, "Error converting image", e);
             return null;
@@ -716,6 +915,7 @@ public class ProfileFragment extends Fragment {
     private void saveProfilePictureToFirestore(String imageUrl) {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) {
+            if (!isAdded()) return;
             Log.w(TAG, "No user logged in for saving profile picture");
             requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "No user logged in", Toast.LENGTH_SHORT).show());
             return;
@@ -730,6 +930,7 @@ public class ProfileFragment extends Fragment {
         db.collection("users").document(userId)
                 .set(updates, SetOptions.merge())
                 .addOnSuccessListener(aVoid -> {
+                    if (!isAdded()) return;
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(requireContext(), "Profile picture saved successfully", Toast.LENGTH_SHORT).show();
                         loadProfilePicture(user.getEmail());
@@ -737,6 +938,7 @@ public class ProfileFragment extends Fragment {
                     Log.d(TAG, "Profile picture saved for user: " + userId + ", URL: " + imageUrl);
                 })
                 .addOnFailureListener(e -> {
+                    if (!isAdded()) return;
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(requireContext(), "Failed to save profile picture: " + e.getMessage(), Toast.LENGTH_LONG).show();
                     });
@@ -749,6 +951,7 @@ public class ProfileFragment extends Fragment {
                 .whereEqualTo("email", email)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!isAdded()) return;
                     if (!queryDocumentSnapshots.isEmpty()) {
                         String imageUrl = queryDocumentSnapshots.getDocuments().get(0).getString("profilePicture");
                         if (imageUrl != null && !imageUrl.isEmpty()) {
@@ -772,6 +975,7 @@ public class ProfileFragment extends Fragment {
                     }
                 })
                 .addOnFailureListener(e -> {
+                    if (!isAdded()) return;
                     Log.e(TAG, "Error loading profile picture: " + e.getMessage(), e);
                     profileImage.setImageResource(R.drawable.user);
                 });

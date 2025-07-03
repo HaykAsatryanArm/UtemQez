@@ -52,7 +52,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    tools:ignore="MissingConstraints">
 
                     <!-- Search Bar -->
                     <EditText
@@ -79,18 +80,6 @@
                         android:padding="8dp"
                         android:scaleType="fitCenter"
                         android:src="@drawable/search" />
-
-                    <!-- Profile Icon -->
-                    <ImageButton
-                        android:id="@+id/nav_profile"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:layout_marginStart="8dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Profile"
-                        android:padding="8dp"
-                        android:scaleType="fitCenter"
-                        android:src="@drawable/profile" />
                 </LinearLayout>
             </LinearLayout>
 

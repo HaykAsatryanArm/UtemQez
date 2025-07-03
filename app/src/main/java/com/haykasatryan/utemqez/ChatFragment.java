@@ -34,7 +34,6 @@ public class ChatFragment extends Fragment implements ResponseCallback {
     private RecyclerView suggestionsRecyclerView;
     private EditText messageInput;
     private ImageButton sendButton;
-    private Button closeButton;
     private ChatMessageAdapter chatAdapter;
     private SuggestionsAdapter suggestionsAdapter;
     private final List<ChatMessage> messageList = new ArrayList<>();
@@ -111,8 +110,6 @@ public class ChatFragment extends Fragment implements ResponseCallback {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_chat, container, false);
 
-        ImageButton profileButton = view.findViewById(R.id.nav_profile);
-        closeButton = view.findViewById(R.id.closeButton);
         chatRecyclerView = view.findViewById(R.id.chatRecyclerView);
         suggestionsRecyclerView = view.findViewById(R.id.suggestionsRecyclerView);
         messageInput = view.findViewById(R.id.messageInput);
@@ -142,18 +139,6 @@ public class ChatFragment extends Fragment implements ResponseCallback {
 
         GeminiPro geminiPro = new GeminiPro();
         chatModel = geminiPro.getModel().startChat();
-
-        profileButton.setOnClickListener(v -> {
-            NavController navController = Navigation.findNavController(v);
-            if (mAuth.getCurrentUser() == null) {
-                navController.navigate(R.id.action_chatFragment_to_loginActivity);
-            } else {
-                navController.navigate(R.id.action_chatFragment_to_profileFragment);
-            }
-        });
-
-        closeButton.setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.action_chatFragment_to_homeFragment));
 
         sendButton.setOnClickListener(v -> {
             String message = messageInput.getText().toString().trim();

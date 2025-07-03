@@ -80,7 +80,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         List<Recipe> newListSafe = newList != null ? new ArrayList<>(newList) : new ArrayList<>();
         newListSafe.removeIf(recipe -> recipe == null);
         mainHandler.post(() -> {
-            Log.d(TAG, "Updating list with " + newListSafe.size() + " recipes");
             DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new RecipeDiffCallback(recipeList, newListSafe));
             recipeList.clear();
             recipeList.addAll(newListSafe);
@@ -109,13 +108,10 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                             if (fetchedIds != null) {
                                 likedRecipeIds.addAll(fetchedIds);
                             }
-                            Log.d(TAG, "Fetched liked recipe IDs for user " + userId + ": " + likedRecipeIds);
                             mainHandler.post(() -> notifyItemRangeChanged(0, recipeList.size()));
                         }
                     })
                     .addOnFailureListener(e -> Log.e(TAG, "Error fetching liked recipes for user " + userId + ": " + e.getMessage(), e));
-        } else {
-            Log.w(TAG, "No user logged in, skipping liked recipes fetch");
         }
     }
 
@@ -140,27 +136,18 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (holder instanceof RecipeViewHolder) {
             if (position >= recipeList.size()) {
-                Log.e(TAG, "Invalid position for RecipeViewHolder: " + position);
                 return;
             }
             Recipe recipe = recipeList.get(position);
             RecipeViewHolder recipeHolder = (RecipeViewHolder) holder;
-            Log.d(TAG, "Binding recipe ID: " + recipe.getId() + ", title: " + recipe.getTitle() + ", position: " + position + ", layout: " + layoutResId);
-
             if (recipeHolder.recipeTitle != null) {
                 recipeHolder.recipeTitle.setText(recipe.getTitle() != null ? recipe.getTitle() : "Untitled");
-            } else {
-                Log.w(TAG, "recipeTitle is null for position: " + position);
             }
             if (recipeHolder.recipeTime != null) {
                 recipeHolder.recipeTime.setText(recipe.getReadyInMinutes() > 0 ? recipe.getReadyInMinutes() + " min" : "N/A");
-            } else {
-                Log.w(TAG, "recipeTime is null for position: " + position);
             }
             if (recipeHolder.likesCount != null) {
                 recipeHolder.likesCount.setText(String.valueOf(recipe.getLikes()));
-            } else {
-                Log.w(TAG, "likesCount is null for position: " + position);
             }
 
             if (recipeHolder.recipeImage != null) {
@@ -183,8 +170,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                             .apply(options)
                             .into(recipeHolder.recipeImage);
                 }
-            } else {
-                Log.w(TAG, "recipeImage is null for position: " + position);
             }
 
             String recipeIdStr = String.valueOf(recipe.getId());
@@ -192,8 +177,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             if (recipeHolder.likeButton != null) {
                 recipeHolder.likeButton.setImageResource(isLiked ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
                 recipeHolder.likeButton.setOnClickListener(v -> handleLike(recipe, recipeHolder));
-            } else {
-                Log.w(TAG, "likeButton is null for position: " + position);
             }
 
             if (recipeHolder.viewDetailsButton != null) {
@@ -202,10 +185,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                     intent.putExtra("recipe", recipe);
                     holder.itemView.getContext().startActivity(intent);
                 });
-            } else {
-                Log.w(TAG, "viewDetailsButton is null for position: " + position);
             }
-
             FirebaseUser user = mAuth.getCurrentUser();
             String userId = user != null ? user.getUid() : "";
             if (recipeHolder.deleteButton != null) {
@@ -215,8 +195,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                         onDeleteClickListener.onDeleteClick(recipe);
                     }
                 });
-            } else {
-                Log.w(TAG, "deleteButton is null for position: " + position);
             }
 
             if (recipeHolder.approveButton != null) {
@@ -226,8 +204,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                         onApproveClickListener.onApproveClick(recipe);
                     }
                 });
-            } else {
-                Log.w(TAG, "approveButton is null for position: " + position);
             }
         }
     }
@@ -235,7 +211,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     @Override
     public int getItemCount() {
         int count = recipeList.size() + (isLoading ? 1 : 0);
-        Log.d(TAG, "Item count: " + count);
         return count;
     }
 
@@ -271,7 +246,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                             }
                         }))
                         .addOnFailureListener(e -> mainHandler.post(() -> {
-                            Log.e(TAG, "Failed to unlike recipe for user " + userId + ": " + e.getMessage(), e);
                             Toast.makeText(holder.itemView.getContext(), "Failed to unlike recipe", Toast.LENGTH_SHORT).show();
                         }));
             } else {
@@ -291,7 +265,6 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                             }
                         }))
                         .addOnFailureListener(e -> mainHandler.post(() -> {
-                            Log.e(TAG, "Failed to like recipe for user " + userId + ": " + e.getMessage(), e);
                             Toast.makeText(holder.itemView.getContext(), "Failed to like recipe", Toast.LENGTH_SHORT).show();
                         }));
             }
@@ -319,16 +292,7 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 likesCount = itemView.findViewById(R.id.likesCount);
                 deleteButton = itemView.findViewById(R.id.deleteButton);
                 approveButton = itemView.findViewById(R.id.approveButton);
-                Log.d(TAG, "RecipeViewHolder initialized - recipeImage: " + (recipeImage != null) +
-                        ", recipeTitle: " + (recipeTitle != null) +
-                        ", recipeTime: " + (recipeTime != null) +
-                        ", viewDetailsButton: " + (viewDetailsButton != null) +
-                        ", likeButton: " + (likeButton != null) +
-                        ", likesCount: " + (likesCount != null) +
-                        ", deleteButton: " + (deleteButton != null) +
-                        ", approveButton: " + (approveButton != null));
             } catch (Exception e) {
-                Log.e(TAG, "Error initializing views for layout: " + itemView.getResources().getResourceName(itemView.getId()), e);
                 throw new RuntimeException("Failed to initialize RecipeViewHolder views", e);
             }
         }

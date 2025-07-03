@@ -62,27 +62,6 @@ public class LikedRecipesFragment extends Fragment {
         likedRecipesAdapter = new RecipeAdapter(likedRecipesList, R.layout.recipe_item_search);
         likedRecipesRecyclerView.setAdapter(likedRecipesAdapter);
 
-        View profileButton = view.findViewById(R.id.nav_profile);
-        if (profileButton != null) {
-            profileButton.setOnClickListener(v -> {
-                if (mAuth.getCurrentUser() == null) {
-                    navController.navigate(R.id.action_likedRecipesFragment_to_loginActivity);
-                } else {
-                    navController.navigate(R.id.action_likedRecipesFragment_to_profileFragment);
-                }
-            });
-        } else {
-            Log.w(TAG, "Profile button not found in layout");
-        }
-
-        View closeButton = view.findViewById(R.id.nav_close);
-        if (closeButton != null) {
-            closeButton.setOnClickListener(v ->
-                    navController.navigate(R.id.action_likedRecipesFragment_to_homeFragment));
-        } else {
-            Log.w(TAG, "Close button not found in layout");
-        }
-
         // Add scroll listener for pagination
         likedRecipesRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override

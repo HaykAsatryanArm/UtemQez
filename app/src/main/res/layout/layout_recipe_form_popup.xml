@@ -64,7 +64,6 @@
                     android:text="Select Image"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
-                    android:color="@color/dark_teal"
                     android:background="@android:color/transparent"
                     android:visibility="visible" />
 
@@ -230,6 +229,19 @@
                         android:layout_marginStart="4dp" />
                 </TableRow>
             </TableLayout>
+
+            <!-- Help Get Nutritions from AI Button -->
+            <Button
+                android:id="@+id/btnGetNutritionFromAI"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Help get nutritions from AI"
+                android:textSize="14sp"
+                android:textColor="@android:color/white"
+                android:backgroundTint="@color/colorPrimary"
+                android:padding="8dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="8dp" />
 
             <!-- Categories Title -->
             <TextView

@@ -51,22 +51,12 @@ public class SearchFragment extends Fragment {
 
         searchBar = view.findViewById(R.id.searchBar);
         searchButton = view.findViewById(R.id.searchButton);
-        ImageButton profileButton = view.findViewById(R.id.nav_profile);
         searchRecipesRecyclerView = view.findViewById(R.id.searchRecipesRecyclerView);
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false);
         searchRecipesRecyclerView.setLayoutManager(layoutManager);
         searchRecipesAdapter = new RecipeAdapter(searchRecipesList, R.layout.recipe_item_search);
         searchRecipesRecyclerView.setAdapter(searchRecipesAdapter);
-
-        profileButton.setOnClickListener(v -> {
-            NavController navController = Navigation.findNavController(v);
-            if (mAuth.getCurrentUser() == null) {
-                navController.navigate(R.id.action_searchFragment_to_loginActivity);
-            } else {
-                navController.navigate(R.id.action_searchFragment_to_profileFragment);
-            }
-        });
 
         searchButton.setOnClickListener(v -> {
             long currentTime = System.currentTimeMillis();

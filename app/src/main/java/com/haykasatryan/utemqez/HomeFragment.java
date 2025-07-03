@@ -10,13 +10,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.ImageButton;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.firebase.auth.FirebaseAuth;
@@ -33,7 +29,6 @@ import java.util.Map;
 public class HomeFragment extends Fragment {
 
     private FirebaseAuth mAuth;
-    private TextView welcomeText;
     private RecyclerView recipeRecyclerView, allRecipesRecyclerView;
     private RecipeAdapter categoryRecipeAdapter, allRecipesAdapter;
     private final List<Recipe> categoryRecipeList = new ArrayList<>();
@@ -62,26 +57,6 @@ public class HomeFragment extends Fragment {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         FirebaseUser user = mAuth.getCurrentUser();
         initializeUserData(user, db);
-
-        welcomeText = view.findViewById(R.id.header_title);
-        ImageButton profileButton = view.findViewById(R.id.nav_profile);
-
-        if (user != null) {
-            String userName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
-            welcomeText.setText("Welcome, " + userName + "!");
-            welcomeText.setVisibility(View.VISIBLE);
-        } else {
-            welcomeText.setVisibility(View.GONE);
-        }
-
-        profileButton.setOnClickListener(v -> {
-            NavController navController = Navigation.findNavController(v);
-            if (mAuth.getCurrentUser() == null) {
-                navController.navigate(R.id.action_homeFragment_to_loginActivity);
-            } else {
-                navController.navigate(R.id.action_homeFragment_to_profileFragment);
-            }
-        });
 
         recipeRecyclerView = view.findViewById(R.id.recipeRecyclerView);
         LinearLayoutManager categoryLayoutManager = new LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false);

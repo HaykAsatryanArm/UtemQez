@@ -36,86 +36,6 @@
             android:layout_height="wrap_content"
             android:paddingBottom="16dp">
 
-            <LinearLayout
-                android:id="@+id/header"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent">
-
-                <!-- Horizontal layout for profile icon and header content -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <!-- Container for header title and login/register buttons -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="center"
-                        android:orientation="vertical">
-
-                        <LinearLayout
-                            android:id="@+id/login_register_container"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:orientation="horizontal"
-                            android:visibility="gone">
-
-                            <Button
-                                android:id="@+id/btnLogin"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="8dp"
-                                android:layout_weight="1"
-                                android:contentDescription="Login button"
-                                android:text="Login" />
-
-                            <Button
-                                android:id="@+id/btnRegister"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="8dp"
-                                android:layout_weight="1"
-                                android:contentDescription="Register button"
-                                android:text="Register" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/header_title"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:paddingHorizontal="24dp"
-                            android:paddingVertical="16dp"
-                            android:text=""
-                            android:textColor="@color/blackot"
-                            android:textSize="24sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <!-- Profile Icon -->
-                    <ImageButton
-                        android:id="@+id/nav_profile"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:layout_marginTop="16dp"
-                        android:layout_marginEnd="16dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Profile"
-                        android:padding="8dp"
-                        android:scaleType="fitCenter"
-                        android:src="@drawable/profile" />
-                </LinearLayout>
-            </LinearLayout>
-
             <TextView
                 android:id="@+id/categoriesTitle"
                 android:layout_width="match_parent"
@@ -127,7 +47,7 @@
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/header" />
+                app:layout_constraintTop_toTopOf="parent" />
 
             <HorizontalScrollView
                 android:id="@+id/categories"
