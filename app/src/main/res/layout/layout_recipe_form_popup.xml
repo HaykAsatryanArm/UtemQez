@@ -3,21 +3,21 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="400dp"
-    android:padding="8dp"
     android:background="@drawable/popup_background"
     android:clipToPadding="false"
-    android:elevation="8dp">
+    android:elevation="8dp"
+    android:minHeight="400dp"
+    android:padding="8dp">
 
     <ScrollView
         android:id="@+id/recipeForm"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true"
         android:descendantFocusability="beforeDescendants"
-        app:layout_constraintTop_toTopOf="parent"
+        android:fillViewport="true"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toTopOf="parent">
 
         <LinearLayout
             android:id="@+id/recipeContainer"
@@ -36,8 +36,8 @@
                     android:id="@+id/recipeImageRing"
                     android:layout_width="match_parent"
                     android:layout_height="190dp"
-                    android:layout_marginTop="5dp"
                     android:layout_marginStart="5dp"
+                    android:layout_marginTop="5dp"
                     android:layout_marginEnd="5dp"
                     android:background="@drawable/placeholder_recipe" />
 
@@ -46,20 +46,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="200dp"
                     android:layout_gravity="center"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/placeholder_recipe"
                     android:clipToOutline="true"
-                    android:contentDescription="Recipe image preview" />
+                    android:contentDescription="Recipe image preview"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/placeholder_recipe" />
 
                 <TextView
                     android:id="@+id/selectImageHint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
+                    android:background="@android:color/transparent"
                     android:text="Select Image"
                     android:textColor="@android:color/white"
                     android:textSize="16sp"
-                    android:background="@android:color/transparent"
                     android:visibility="visible" />
 
             </FrameLayout>
@@ -68,216 +68,225 @@
                 android:id="@+id/recipeTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/edit_text_background"
                 android:hint="Recipe Title"
-                android:textSize="14sp"
                 android:inputType="text"
                 android:padding="10dp"
-                android:background="@drawable/edit_text_background"
-                android:layout_marginBottom="8dp" />
+                android:textSize="14sp" />
 
             <EditText
                 android:id="@+id/recipeTime"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/edit_text_background"
                 android:hint="Ready in Minutes"
-                android:textSize="14sp"
                 android:inputType="number"
                 android:padding="10dp"
-                android:background="@drawable/edit_text_background"
-                android:layout_marginBottom="4dp" />
+                android:textSize="14sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
                 android:text="Ingredients"
-                android:textSize="14sp"
                 android:textColor="@android:color/black"
-                android:textStyle="bold"
-                android:layout_marginBottom="4dp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/ingredientsContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="4dp"
+                android:orientation="vertical" />
 
             <Button
                 android:id="@+id/btnAddIngredient"
                 android:layout_width="30dp"
                 android:layout_height="30dp"
-                android:textAppearance="@style/ButtonTextAppearance"
-                android:text="+"
-                android:textSize="16sp"
-                android:textColor="@android:color/white"
+                android:layout_marginBottom="8dp"
                 android:backgroundTint="@color/colorPrimary"
-                android:layout_marginBottom="8dp" />
+                android:text="+"
+                android:textAppearance="@style/ButtonTextAppearance"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
                 android:text="Instructions"
-                android:textSize="14sp"
                 android:textColor="@android:color/black"
-                android:textStyle="bold"
-                android:layout_marginBottom="4dp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/instructionsContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="4dp"
+                android:orientation="vertical" />
 
             <Button
                 android:id="@+id/btnAddInstruction"
                 android:layout_width="30dp"
                 android:layout_height="30dp"
-                android:textAppearance="@style/ButtonTextAppearance"
-                android:text="+"
-                android:textSize="16sp"
-                android:textColor="@android:color/white"
+                android:layout_marginBottom="8dp"
                 android:backgroundTint="@color/colorPrimary"
-                android:layout_marginBottom="8dp" />
+                android:text="+"
+                android:textAppearance="@style/ButtonTextAppearance"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
                 android:text="Nutrition"
-                android:textSize="14sp"
                 android:textColor="@android:color/black"
-                android:textStyle="bold"
-                android:layout_marginBottom="4dp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <TableLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:stretchColumns="*"
-                android:layout_marginBottom="4dp">
+                android:layout_marginBottom="4dp"
+                android:stretchColumns="*">
 
                 <TableRow
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
+
                     <EditText
                         android:id="@+id/nutritionCarbs"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:layout_marginBottom="4dp"
                         android:layout_weight="1"
+                        android:background="@drawable/edit_text_background"
                         android:hint="Carbs (g)"
                         android:inputType="numberDecimal"
                         android:padding="10dp"
-                        android:textSize="14sp"
-                        android:background="@drawable/edit_text_background"
-                        android:layout_marginEnd="4dp"
-                        android:layout_marginBottom="4dp" />
+                        android:textSize="14sp" />
+
                     <EditText
                         android:id="@+id/nutritionProtein"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginBottom="4dp"
                         android:layout_weight="1"
+                        android:background="@drawable/edit_text_background"
                         android:hint="Protein (g)"
                         android:inputType="numberDecimal"
                         android:padding="10dp"
-                        android:textSize="14sp"
-                        android:background="@drawable/edit_text_background"
-                        android:layout_marginStart="4dp"
-                        android:layout_marginBottom="4dp" />
+                        android:textSize="14sp" />
                 </TableRow>
 
                 <TableRow
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp">
+
                     <EditText
                         android:id="@+id/nutritionCalories"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
                         android:layout_weight="1"
+                        android:background="@drawable/edit_text_background"
                         android:hint="Calories"
                         android:inputType="number"
                         android:padding="10dp"
-                        android:textSize="14sp"
-                        android:background="@drawable/edit_text_background"
-                        android:layout_marginEnd="4dp" />
+                        android:textSize="14sp" />
+
                     <EditText
                         android:id="@+id/nutritionFat"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
                         android:layout_weight="1"
+                        android:background="@drawable/edit_text_background"
                         android:hint="Fat (g)"
-                        android:textSize="14sp"
                         android:inputType="numberDecimal"
                         android:padding="10dp"
-                        android:background="@drawable/edit_text_background"
-                        android:layout_marginStart="4dp" />
+                        android:textSize="14sp" />
                 </TableRow>
             </TableLayout>
 
-            <Button
-                android:id="@+id/btnGetNutritionFromAI"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Help get nutritions from AI"
-                android:textSize="14sp"
-                android:textColor="@android:color/white"
-                android:backgroundTint="@color/colorPrimary"
-                android:padding="8dp"
                 android:layout_marginTop="4dp"
-                android:layout_marginBottom="8dp" />
+                android:layout_marginBottom="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnGetNutritionFromAI"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="@color/colorPrimary"
+                    android:enabled="false"
+                    android:padding="8dp"
+                    android:text="Help get nutritions from AI"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp" />
+
+                <ProgressBar
+                    android:id="@+id/nutritionLoadingProgress"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginStart="8dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
                 android:text="Categories"
-                android:textSize="14sp"
                 android:textColor="@android:color/black"
-                android:textStyle="bold"
-                android:layout_marginBottom="4dp" />
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/categoriesContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="4dp"
+                android:orientation="vertical" />
 
             <Button
                 android:id="@+id/btnAddCategory"
                 android:layout_width="30dp"
                 android:layout_height="30dp"
-                android:textAppearance="@style/ButtonTextAppearance"
-                android:text="+"
-                android:textSize="16sp"
-                android:textColor="@android:color/white"
+                android:layout_marginBottom="8dp"
                 android:backgroundTint="@color/colorPrimary"
-                android:layout_marginBottom="8dp" />
+                android:text="+"
+                android:textAppearance="@style/ButtonTextAppearance"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
 
             <Button
                 android:id="@+id/btnPostRecipe"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="@style/ButtonTextAppearance"
-                android:text="Post Recipe"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
-                android:textColor="@android:color/white"
-                android:backgroundTint="@color/colorPrimary"
                 android:layout_marginTop="4dp"
-                android:layout_marginBottom="8dp" />
+                android:layout_marginBottom="8dp"
+                android:backgroundTint="@color/colorPrimary"
+                android:paddingStart="12dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="8dp"
+                android:text="Post Recipe"
+                android:textAppearance="@style/ButtonTextAppearance"
+                android:textColor="@android:color/white" />
 
         </LinearLayout>
     </ScrollView>
-
-    <ProgressBar
-        android:id="@+id/nutritionLoadingProgressBar"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
 </androidx.constraintlayout.widget.ConstraintLayout>

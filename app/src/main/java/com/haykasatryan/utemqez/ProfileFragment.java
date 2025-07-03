@@ -9,6 +9,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.TypedValue;
@@ -25,7 +27,6 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
@@ -34,7 +35,6 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
@@ -47,7 +47,6 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.SetOptions;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -78,7 +77,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
     private LinearLayout ingredientsContainer, instructionsContainer, categoriesContainer;
     private Button btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe, btnGetNutritionFromAI;
     private EditText nutritionCalories, nutritionProtein, nutritionFat, nutritionCarbs;
-    private ProgressBar nutritionLoadingProgressBar;
+    private ProgressBar nutritionLoadingProgress;
     private String recipeImageUrl = "";
     private RecyclerView userRecipesRecyclerView;
     private RecipeAdapter userRecipesAdapter;
@@ -420,7 +419,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
         btnAddCategory = recipeDialog.findViewById(R.id.btnAddCategory);
         btnPostRecipe = recipeDialog.findViewById(R.id.btnPostRecipe);
         btnGetNutritionFromAI = recipeDialog.findViewById(R.id.btnGetNutritionFromAI);
-        nutritionLoadingProgressBar = recipeDialog.findViewById(R.id.nutritionLoadingProgressBar);
+        nutritionLoadingProgress = recipeDialog.findViewById(R.id.nutritionLoadingProgress);
 
         if (recipeTitle == null || recipeTime == null || recipeImagePreview == null || selectImageHint == null ||
                 ingredientsContainer == null || btnAddIngredient == null ||
@@ -428,8 +427,7 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                 nutritionCalories == null || nutritionProtein == null ||
                 nutritionFat == null || nutritionCarbs == null ||
                 categoriesContainer == null || btnAddCategory == null ||
-                btnPostRecipe == null || btnGetNutritionFromAI == null ||
-                nutritionLoadingProgressBar == null) {
+                btnPostRecipe == null || btnGetNutritionFromAI == null || nutritionLoadingProgress == null) {
             Log.e(TAG, "One or more views in recipe form dialog not found");
             Toast.makeText(requireContext(), "Error initializing recipe form", Toast.LENGTH_SHORT).show();
             recipeDialog.dismiss();
@@ -441,9 +439,18 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
             selectImageHint.setVisibility(View.VISIBLE);
             pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI));
         });
-        btnAddIngredient.setOnClickListener(v -> addIngredientField());
-        btnAddInstruction.setOnClickListener(v -> addInstructionField());
-        btnAddCategory.setOnClickListener(v -> addCategoryField());
+        btnAddIngredient.setOnClickListener(v -> {
+            addIngredientField();
+            updateAINutritionButtonState();
+        });
+        btnAddInstruction.setOnClickListener(v -> {
+            addInstructionField();
+            updateAINutritionButtonState();
+        });
+        btnAddCategory.setOnClickListener(v -> {
+            addCategoryField();
+            updateAINutritionButtonState();
+        });
         btnPostRecipe.setOnClickListener(v -> {
             if (validateRecipeForm()) {
                 postRecipe();
@@ -451,10 +458,16 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
             }
         });
         btnGetNutritionFromAI.setOnClickListener(v -> {
+            if (!btnGetNutritionFromAI.isEnabled()) {
+                return; // Do nothing if the button is disabled
+            }
             if (validateRecipeFormForAI()) {
+                btnGetNutritionFromAI.setEnabled(false);
+                btnGetNutritionFromAI.setAlpha(0.5f);
+                nutritionLoadingProgress.setVisibility(View.VISIBLE);
                 requestNutritionFromAI();
             } else {
-                Toast toast = Toast.makeText(requireContext(), "Please enter recipe title and at least one ingredient", Toast.LENGTH_SHORT);
+                Toast toast = Toast.makeText(requireContext(), "Please fill all recipe information", Toast.LENGTH_SHORT);
                 TextView toastTextView = toast.getView().findViewById(android.R.id.message);
                 if (toastTextView != null) {
                     toastTextView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_light));
@@ -463,6 +476,22 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
             }
         });
 
+        // Add text watchers to monitor changes in recipe title and time
+        TextWatcher formTextWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateAINutritionButtonState();
+            }
+        };
+        recipeTitle.addTextChangedListener(formTextWatcher);
+        recipeTime.addTextChangedListener(formTextWatcher);
+
         addIngredientField();
         addInstructionField();
         addCategoryField();
@@ -470,6 +499,12 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
         recipeDialog.setCanceledOnTouchOutside(true);
         recipeDialog.show();
         Log.d(TAG, "Recipe form dialog shown");
+    }
+
+    private void updateAINutritionButtonState() {
+        boolean isValid = validateRecipeFormForAI();
+        btnGetNutritionFromAI.setEnabled(isValid);
+        btnGetNutritionFromAI.setAlpha(isValid ? 1.0f : 0.5f);
     }
 
     private boolean validateRecipeForm() {
@@ -492,6 +527,14 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
         if (recipeTitle.getText().toString().trim().isEmpty()) {
             return false;
         }
+        if (recipeTime.getText().toString().trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Integer.parseInt(recipeTime.getText().toString().trim());
+        } catch (NumberFormatException e) {
+            return false;
+        }
         boolean hasIngredients = false;
         for (int i = 0; i < ingredientsContainer.getChildCount(); i++) {
             LinearLayout layout = (LinearLayout) ingredientsContainer.getChildAt(i);
@@ -502,18 +545,36 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                 break;
             }
         }
-        return hasIngredients;
+        if (!hasIngredients) {
+            return false;
+        }
+        boolean hasInstructions = false;
+        for (int i = 0; i < instructionsContainer.getChildCount(); i++) {
+            EditText instruction = (EditText) instructionsContainer.getChildAt(i);
+            if (!instruction.getText().toString().trim().isEmpty()) {
+                hasInstructions = true;
+                break;
+            }
+        }
+        if (!hasInstructions) {
+            return false;
+        }
+        boolean hasCategories = false;
+        for (int i = 0; i < categoriesContainer.getChildCount(); i++) {
+            EditText category = (EditText) categoriesContainer.getChildAt(i);
+            if (!category.getText().toString().trim().isEmpty()) {
+                hasCategories = true;
+                break;
+            }
+        }
+        return hasCategories;
     }
 
     private void requestNutritionFromAI() {
-        nutritionLoadingProgressBar.setVisibility(View.VISIBLE);
         StringBuilder prompt = new StringBuilder();
-        prompt.append("You are a nutritionist AI estimating nutritional values for recipes using standard sources (e.g., USDA). Estimate realistic totals for the entire dish below. Assume common ingredient types and average amounts if not specified. Provide only numerical values (no units) for Calories, Protein, Fat, and Carbs. Format the response as: 'Calories: <number>, Protein: <number>, Fat: <number>, Carbs: <number>'.\n\n");
+        prompt.append("Calculate the nutritional values for the following recipe. Provide only numerical values (no units) for Calories, Protein, Fat, and Carbs. Format the response as: 'Calories: <number>, Protein: <number>, Fat: <number>, Carbs: <number>'.\n\n");
         prompt.append("Recipe Title: ").append(recipeTitle.getText().toString().trim()).append("\n");
-
-        if (!recipeTime.getText().toString().trim().isEmpty()) {
-            prompt.append("Preparation Time: ").append(recipeTime.getText().toString().trim()).append(" minutes\n");
-        }
+        prompt.append("Preparation Time: ").append(recipeTime.getText().toString().trim()).append(" minutes\n");
 
         prompt.append("Ingredients:\n");
         for (int i = 0; i < ingredientsContainer.getChildCount(); i++) {
@@ -525,40 +586,20 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
             }
         }
 
-        boolean hasInstructions = false;
+        prompt.append("Instructions:\n");
         for (int i = 0; i < instructionsContainer.getChildCount(); i++) {
             EditText instruction = (EditText) instructionsContainer.getChildAt(i);
-            if (!instruction.getText().toString().trim().isEmpty()) {
-                hasInstructions = true;
-                break;
-            }
-        }
-        if (hasInstructions) {
-            prompt.append("Instructions:\n");
-            for (int i = 0; i < instructionsContainer.getChildCount(); i++) {
-                EditText instruction = (EditText) instructionsContainer.getChildAt(i);
-                String instructionText = instruction.getText().toString().trim();
-                if (!instructionText.isEmpty()) {
-                    prompt.append((i + 1)).append(". ").append(instructionText).append("\n");
-                }
+            String instructionText = instruction.getText().toString().trim();
+            if (!instructionText.isEmpty()) {
+                prompt.append((i + 1)).append(". ").append(instructionText).append("\n");
             }
         }
 
-        boolean hasCategories = false;
+        prompt.append("Categories:\n");
         for (int i = 0; i < categoriesContainer.getChildCount(); i++) {
             EditText category = (EditText) categoriesContainer.getChildAt(i);
             if (!category.getText().toString().trim().isEmpty()) {
-                hasCategories = true;
-                break;
-            }
-        }
-        if (hasCategories) {
-            prompt.append("Categories:\n");
-            for (int i = 0; i < categoriesContainer.getChildCount(); i++) {
-                EditText category = (EditText) categoriesContainer.getChildAt(i);
-                if (!category.getText().toString().trim().isEmpty()) {
-                    prompt.append("- ").append(category.getText().toString().trim()).append("\n");
-                }
+                prompt.append("- ").append(category.getText().toString().trim()).append("\n");
             }
         }
 
@@ -573,7 +614,8 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
             return;
         }
         requireActivity().runOnUiThread(() -> {
-            nutritionLoadingProgressBar.setVisibility(View.GONE);
+            nutritionLoadingProgress.setVisibility(View.GONE);
+            updateAINutritionButtonState();
             Log.d(TAG, "AI response: " + response);
             Pattern pattern = Pattern.compile("Calories: (\\d+), Protein: (\\d+\\.?\\d*), Fat: (\\d+\\.?\\d*), Carbs: (\\d+\\.?\\d*)");
             Matcher matcher = pattern.matcher(response);
@@ -597,7 +639,8 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
             return;
         }
         requireActivity().runOnUiThread(() -> {
-            nutritionLoadingProgressBar.setVisibility(View.GONE);
+            nutritionLoadingProgress.setVisibility(View.GONE);
+            updateAINutritionButtonState();
             Log.e(TAG, "AI error: " + throwable.getMessage(), throwable);
             Toast.makeText(requireContext(), "Failed to get nutrition values: " + throwable.getMessage(), Toast.LENGTH_LONG).show();
         });
@@ -623,6 +666,16 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics())
         );
         name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        name.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateAINutritionButtonState();
+            }
+        });
 
         EditText amount = new EditText(requireContext());
         amount.setHint("Amount");
@@ -635,6 +688,16 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics())
         );
         amount.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        amount.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateAINutritionButtonState();
+            }
+        });
 
         ingredientLayout.addView(name);
         ingredientLayout.addView(amount);
@@ -655,6 +718,16 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics())
         );
         instruction.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        instruction.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateAINutritionButtonState();
+            }
+        });
         instructionsContainer.addView(instruction);
     }
 
@@ -672,6 +745,16 @@ public class ProfileFragment extends Fragment implements ResponseCallback {
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics())
         );
         category.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        category.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateAINutritionButtonState();
+            }
+        });
         categoriesContainer.addView(category);
     }
 
