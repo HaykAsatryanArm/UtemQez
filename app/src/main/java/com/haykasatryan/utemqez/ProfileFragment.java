@@ -8,12 +8,15 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -25,12 +28,12 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
@@ -60,10 +63,10 @@ public class ProfileFragment extends Fragment {
     private ImageButton btnLogout;
     private Cloudinary cloudinary;
     private Dialog recipeDialog;
-    private Button btnSelectImage, btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe;
     private EditText recipeTitle, recipeTime;
-    private ImageView imageStatusIcon;
+    private ImageView recipeImagePreview;
     private LinearLayout ingredientsContainer, instructionsContainer, categoriesContainer;
+    private Button btnAddIngredient, btnAddInstruction, btnAddCategory, btnPostRecipe;
     private EditText nutritionCalories, nutritionProtein, nutritionFat, nutritionCarbs;
     private String recipeImageUrl = "";
     private RecyclerView userRecipesRecyclerView;
@@ -93,6 +96,12 @@ public class ProfileFragment extends Fragment {
         userRecipesRecyclerView = view.findViewById(R.id.userRecipesRecyclerView);
         Button btnAdminDashboard = view.findViewById(R.id.btnAdminDashboard);
 
+        if (userName == null || profileImage == null || btnLogout == null || btnAddNewRecipe == null || userRecipesRecyclerView == null || btnAdminDashboard == null) {
+            Log.e(TAG, "One or more views in fragment_profile not found");
+            Toast.makeText(requireContext(), "Error loading profile layout", Toast.LENGTH_SHORT).show();
+            return view;
+        }
+
         userRecipesRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false));
         userRecipesAdapter = new RecipeAdapter(userRecipesList, R.layout.recipe_item_search);
         userRecipesRecyclerView.setAdapter(userRecipesAdapter);
@@ -101,10 +110,13 @@ public class ProfileFragment extends Fragment {
 
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
+            Log.d(TAG, "Current user UID: " + user.getUid());
+            Toast.makeText(requireContext(), "Logged in as: " + user.getUid(), Toast.LENGTH_LONG).show();
             userName.setText(user.getDisplayName() != null ? user.getDisplayName() : "User");
             initializeUserDocument(user);
             loadProfilePicture(user.getEmail());
             fetchUserRecipes(user.getUid());
+            debugAllRecipes();
 
             db.collection("users").document(user.getUid()).get()
                     .addOnSuccessListener(documentSnapshot -> {
@@ -132,6 +144,20 @@ public class ProfileFragment extends Fragment {
         return view;
     }
 
+    private void debugAllRecipes() {
+        Log.d(TAG, "Debugging all recipes in Firestore");
+        db.collection("recipes").get().addOnCompleteListener(task -> {
+            if (task.isSuccessful()) {
+                Log.d(TAG, "Total recipes in collection: " + task.getResult().size());
+                for (QueryDocumentSnapshot doc : task.getResult()) {
+                    Log.d(TAG, "Recipe: " + doc.getId() + ", userId: " + doc.getString("userId") + ", title: " + doc.getString("title") + ", isApproved: " + doc.getBoolean("isApproved"));
+                }
+            } else {
+                Log.e(TAG, "Error debugging all recipes: " + task.getException().getMessage(), task.getException());
+            }
+        });
+    }
+
     private void initializeUserDocument(FirebaseUser user) {
         String userId = user.getUid();
 
@@ -150,31 +176,48 @@ public class ProfileFragment extends Fragment {
     }
 
     private void fetchUserRecipes(String userId) {
+        Log.d(TAG, "Fetching recipes for userId: " + userId);
         db.collection("recipes")
                 .whereEqualTo("userId", userId)
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         userRecipesList.clear();
+                        int recipeCount = 0;
+                        Log.d(TAG, "Query returned " + task.getResult().size() + " documents");
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             try {
+                                Log.d(TAG, "Document ID: " + document.getId() + ", Data: " + document.getData());
+
+                                if (document.getString("userId") == null || !document.getString("userId").equals(userId)) {
+                                    Log.w(TAG, "Skipping document " + document.getId() + ": userId mismatch or null");
+                                    continue;
+                                }
+                                Long id = document.getLong("id");
+                                if (id == null) {
+                                    Log.e(TAG, "Skipping document " + document.getId() + ": 'id' field missing or not a long");
+                                    continue;
+                                }
+
                                 Recipe recipe = new Recipe();
-                                recipe.setId(document.getLong("id").intValue());
-                                recipe.setTitle(document.getString("title"));
-                                recipe.setReadyInMinutes(document.getLong("readyInMinutes").intValue());
-                                recipe.setSourceUrl(document.getString("sourceUrl"));
-                                recipe.setInstructions(document.getString("instructions"));
-                                recipe.setImageUrl(document.getString("imageUrl"));
-                                recipe.setCategory((List<String>) document.get("category"));
-                                recipe.setUserId(document.getString("userId"));
+                                recipe.setId(id.intValue());
+                                recipe.setTitle(document.getString("title") != null ? document.getString("title") : "Untitled");
+                                recipe.setReadyInMinutes(document.getLong("readyInMinutes") != null ? document.getLong("readyInMinutes").intValue() : 0);
+                                recipe.setSourceUrl(document.getString("sourceUrl") != null ? document.getString("sourceUrl") : "");
+                                recipe.setInstructions(document.getString("instructions") != null ? document.getString("instructions") : "");
+                                recipe.setImageUrl(document.getString("imageUrl") != null ? document.getString("imageUrl") : "");
+                                recipe.setCategory((List<String>) document.get("category") != null ? (List<String>) document.get("category") : new ArrayList<>());
+                                recipe.setUserId(document.getString("userId") != null ? document.getString("userId") : "");
+                                recipe.setApproved(document.getBoolean("isApproved") != null ? document.getBoolean("isApproved") : false);
+                                recipe.setLikes(document.getLong("likes") != null ? document.getLong("likes").intValue() : 0);
 
                                 List<Map<String, String>> rawIngredients = (List<Map<String, String>>) document.get("ingredients");
                                 List<Ingredient> ingredients = new ArrayList<>();
                                 if (rawIngredients != null) {
                                     for (Map<String, String> raw : rawIngredients) {
                                         Ingredient ingredient = new Ingredient();
-                                        ingredient.setAmount(raw.get("amount"));
-                                        ingredient.setName(raw.get("name"));
+                                        ingredient.setAmount(raw.get("amount") != null ? raw.get("amount") : "");
+                                        ingredient.setName(raw.get("name") != null ? raw.get("name") : "");
                                         ingredients.add(ingredient);
                                     }
                                 }
@@ -183,33 +226,42 @@ public class ProfileFragment extends Fragment {
                                 Map<String, String> rawNutrition = (Map<String, String>) document.get("nutrition");
                                 Nutrition nutrition = new Nutrition();
                                 if (rawNutrition != null) {
-                                    nutrition.setCalories(rawNutrition.get("calories"));
-                                    nutrition.setProtein(rawNutrition.get("protein"));
-                                    nutrition.setFat(rawNutrition.get("fat"));
-                                    nutrition.setCarbs(rawNutrition.get("carbs"));
+                                    nutrition.setCalories(rawNutrition.get("calories") != null ? rawNutrition.get("calories") : "");
+                                    nutrition.setProtein(rawNutrition.get("protein") != null ? rawNutrition.get("protein") : "");
+                                    nutrition.setFat(rawNutrition.get("fat") != null ? rawNutrition.get("fat") : "");
+                                    nutrition.setCarbs(rawNutrition.get("carbs") != null ? rawNutrition.get("carbs") : "");
                                 }
                                 recipe.setNutrition(nutrition);
 
                                 userRecipesList.add(recipe);
+                                recipeCount++;
+                                Log.d(TAG, "Added recipe: " + document.getId() + ", title: " + recipe.getTitle() + ", isApproved: " + recipe.isApproved());
                             } catch (Exception e) {
-                                requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Error loading recipe: " + document.getId(), Toast.LENGTH_SHORT).show());
-                                Log.e(TAG, "Error parsing recipe: " + document.getId(), e);
+                                Log.e(TAG, "Error parsing recipe: " + document.getId() + ", error: " + e.getMessage(), e);
                             }
                         }
+                        int finalRecipeCount = recipeCount;
                         requireActivity().runOnUiThread(() -> {
-                            userRecipesAdapter.notifyDataSetChanged();
+                            userRecipesAdapter.updateList(userRecipesList);
+                            userRecipesRecyclerView.setVisibility(userRecipesList.isEmpty() ? View.GONE : View.VISIBLE);
                             TextView noRecipesText = requireView().findViewById(R.id.noRecipesText);
                             noRecipesText.setVisibility(userRecipesList.isEmpty() ? View.VISIBLE : View.GONE);
-                            userRecipesRecyclerView.setVisibility(userRecipesList.isEmpty() ? View.GONE : View.VISIBLE);
-                            Log.d(TAG, "Fetched " + userRecipesList.size() + " user recipes");
+                            userRecipesRecyclerView.scheduleLayoutAnimation();
+                            userRecipesRecyclerView.invalidate();
+                            Toast.makeText(requireContext(), "Recipes loaded: " + userRecipesList.size(), Toast.LENGTH_SHORT).show();
+                            Log.d(TAG, "Fetched " + finalRecipeCount + " user recipes for userId: " + userId);
+                            if (userRecipesList.isEmpty()) {
+                                Log.w(TAG, "No recipes added to userRecipesList. Check Firestore data, security rules, or parsing logic.");
+                            }
                         });
                     } else {
                         requireActivity().runOnUiThread(() -> {
                             TextView noRecipesText = requireView().findViewById(R.id.noRecipesText);
                             noRecipesText.setVisibility(View.VISIBLE);
                             userRecipesRecyclerView.setVisibility(View.GONE);
+                            Toast.makeText(requireContext(), "Failed to fetch recipes: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                         });
-                        Log.e(TAG, "Error fetching user recipes", task.getException());
+                        Log.e(TAG, "Error fetching user recipes: " + task.getException().getMessage(), task.getException());
                     }
                 });
     }
@@ -247,19 +299,48 @@ public class ProfileFragment extends Fragment {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error deleting recipe: " + e.getMessage(), e);
+                    Toast.makeText(requireContext(), "Failed to delete recipe", Toast.LENGTH_SHORT).show();
                 });
     }
 
     private void showRecipeFormDialog() {
         recipeDialog = new Dialog(requireContext());
-        recipeDialog.setContentView(R.layout.layout_recipe_form_popup);
+        try {
+            recipeDialog.setContentView(R.layout.layout_recipe_form_popup);
+        } catch (Exception e) {
+            Log.e(TAG, "Error inflating layout_recipe_form_popup: " + e.getMessage(), e);
+            Toast.makeText(requireContext(), "Error loading recipe form", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         recipeDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        recipeDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        WindowManager.LayoutParams params = recipeDialog.getWindow().getAttributes();
+        params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        requireActivity().getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        int maxHeight = (int) (displayMetrics.heightPixels * 0.8);
+        params.height = maxHeight;
+        recipeDialog.getWindow().setAttributes(params);
+        recipeDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+
+        View contentView = recipeDialog.findViewById(R.id.recipeForm);
+        contentView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                contentView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                LinearLayout recipeContainer = contentView.findViewById(R.id.recipeContainer);
+                int dialogHeight = contentView.getHeight();
+                int contentHeight = recipeContainer.getHeight();
+                Log.d(TAG, "Dialog height: " + dialogHeight + "px, Max height: " + maxHeight + "px, Content height: " + contentHeight + "px");
+                if (contentHeight > dialogHeight) {
+                    Log.w(TAG, "Content height exceeds dialog height; ensure ScrollView is scrollable");
+                }
+            }
+        });
 
         recipeTitle = recipeDialog.findViewById(R.id.recipeTitle);
         recipeTime = recipeDialog.findViewById(R.id.recipeTime);
-        btnSelectImage = recipeDialog.findViewById(R.id.btnSelectImage);
-        imageStatusIcon = recipeDialog.findViewById(R.id.imageStatusIcon);
+        recipeImagePreview = recipeDialog.findViewById(R.id.recipeImagePreview);
         ingredientsContainer = recipeDialog.findViewById(R.id.ingredientsContainer);
         btnAddIngredient = recipeDialog.findViewById(R.id.btnAddIngredient);
         instructionsContainer = recipeDialog.findViewById(R.id.instructionsContainer);
@@ -272,12 +353,21 @@ public class ProfileFragment extends Fragment {
         btnAddCategory = recipeDialog.findViewById(R.id.btnAddCategory);
         btnPostRecipe = recipeDialog.findViewById(R.id.btnPostRecipe);
 
-        TextView btnClosePopup = recipeDialog.findViewById(R.id.btnClosePopup);
-        btnClosePopup.setOnClickListener(v -> recipeDialog.dismiss());
+        if (recipeTitle == null || recipeTime == null || recipeImagePreview == null ||
+                ingredientsContainer == null || btnAddIngredient == null ||
+                instructionsContainer == null || btnAddInstruction == null ||
+                nutritionCalories == null || nutritionProtein == null ||
+                nutritionFat == null || nutritionCarbs == null ||
+                categoriesContainer == null || btnAddCategory == null ||
+                btnPostRecipe == null) {
+            Log.e(TAG, "One or more views in recipe form dialog not found");
+            Toast.makeText(requireContext(), "Error initializing recipe form", Toast.LENGTH_SHORT).show();
+            recipeDialog.dismiss();
+            return;
+        }
 
-        btnSelectImage.setOnClickListener(v -> {
-            imageStatusIcon.setImageResource(android.R.drawable.stat_sys_download);
-            imageStatusIcon.setVisibility(View.VISIBLE);
+        recipeImagePreview.setOnClickListener(v -> {
+            recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
             pickRecipeImage.launch(new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI));
         });
         btnAddIngredient.setOnClickListener(v -> addIngredientField());
@@ -318,31 +408,72 @@ public class ProfileFragment extends Fragment {
     private void addIngredientField() {
         LinearLayout ingredientLayout = new LinearLayout(requireContext());
         ingredientLayout.setOrientation(LinearLayout.HORIZONTAL);
-        ingredientLayout.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        layoutParams.setMargins(0, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, getResources().getDisplayMetrics()), 0, 0);
+        ingredientLayout.setLayoutParams(layoutParams);
+
+        EditText name = new EditText(requireContext());
+        name.setHint("Ingredient Name");
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+        nameParams.setMargins(0, 0, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, getResources().getDisplayMetrics()), 0);
+        name.setLayoutParams(nameParams);
+        name.setBackground(ContextCompat.getDrawable(requireContext(), R.drawable.edit_text_background));
+        name.setPadding(
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics())
+        );
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
 
         EditText amount = new EditText(requireContext());
         amount.setHint("Amount");
         amount.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        EditText name = new EditText(requireContext());
-        name.setHint("Ingredient Name");
-        name.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        amount.setBackground(ContextCompat.getDrawable(requireContext(), R.drawable.edit_text_background));
+        amount.setPadding(
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics())
+        );
+        amount.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
 
-        ingredientLayout.addView(amount);
         ingredientLayout.addView(name);
+        ingredientLayout.addView(amount);
         ingredientsContainer.addView(ingredientLayout);
     }
 
     private void addInstructionField() {
         EditText instruction = new EditText(requireContext());
         instruction.setHint("Instruction Step");
-        instruction.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, getResources().getDisplayMetrics()), 0, 0);
+        instruction.setLayoutParams(params);
+        instruction.setBackground(ContextCompat.getDrawable(requireContext(), R.drawable.edit_text_background));
+        instruction.setPadding(
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics())
+        );
+        instruction.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         instructionsContainer.addView(instruction);
     }
 
     private void addCategoryField() {
         EditText category = new EditText(requireContext());
         category.setHint("Category");
-        category.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8, getResources().getDisplayMetrics()), 0, 0);
+        category.setLayoutParams(params);
+        category.setBackground(ContextCompat.getDrawable(requireContext(), R.drawable.edit_text_background));
+        category.setPadding(
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics())
+        );
+        category.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         categoriesContainer.addView(category);
     }
 
@@ -355,12 +486,13 @@ public class ProfileFragment extends Fragment {
         }
 
         int recipeId = new Random().nextInt(900000) + 100000;
+        Log.d(TAG, "Posting recipe with ID: " + recipeId + ", userId: " + user.getUid());
 
         List<Map<String, String>> ingredients = new ArrayList<>();
         for (int i = 0; i < ingredientsContainer.getChildCount(); i++) {
             LinearLayout layout = (LinearLayout) ingredientsContainer.getChildAt(i);
-            EditText amount = (EditText) layout.getChildAt(0);
-            EditText name = (EditText) layout.getChildAt(1);
+            EditText name = (EditText) layout.getChildAt(0);
+            EditText amount = (EditText) layout.getChildAt(1);
             if (!amount.getText().toString().isEmpty() && !name.getText().toString().isEmpty()) {
                 Map<String, String> ingredient = new HashMap<>();
                 ingredient.put("amount", amount.getText().toString());
@@ -378,10 +510,18 @@ public class ProfileFragment extends Fragment {
             }
         }
 
-        String instructions = null;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            instructions = instructionList.isEmpty() ? "No instructions found" :
-                    String.join(" ", instructionList.stream().map(s -> (instructionList.indexOf(s) + 1) + ". " + s).toList());
+        String instructions;
+        if (instructionList.isEmpty()) {
+            instructions = "No instructions provided";
+        } else {
+            StringBuilder instructionsBuilder = new StringBuilder();
+            for (int i = 0; i < instructionList.size(); i++) {
+                instructionsBuilder.append(i + 1).append(". ").append(instructionList.get(i));
+                if (i < instructionList.size() - 1) {
+                    instructionsBuilder.append("\n");
+                }
+            }
+            instructions = instructionsBuilder.toString();
         }
 
         Map<String, String> nutrition = new HashMap<>();
@@ -410,6 +550,7 @@ public class ProfileFragment extends Fragment {
         recipe.put("category", categories);
         recipe.put("userId", user.getUid());
         recipe.put("isApproved", false);
+        recipe.put("likes", 0);
 
         db.collection("recipes")
                 .document(String.valueOf(recipeId))
@@ -422,13 +563,14 @@ public class ProfileFragment extends Fragment {
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error posting recipe: " + e.getMessage(), e);
+                    Toast.makeText(requireContext(), "Failed to post recipe", Toast.LENGTH_SHORT).show();
                 });
     }
 
     private void clearForm() {
         recipeTitle.setText("");
         recipeTime.setText("");
-        imageStatusIcon.setVisibility(View.GONE);
+        recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
         recipeImageUrl = "";
         ingredientsContainer.removeAllViews();
         instructionsContainer.removeAllViews();
@@ -476,18 +618,26 @@ public class ProfileFragment extends Fragment {
                         InputStream inputStream = requireActivity().getContentResolver().openInputStream(imageUri);
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                         if (bitmap != null) {
+                            Glide.with(requireContext())
+                                    .load(bitmap)
+                                    .apply(new RequestOptions()
+                                            .transform(new RoundedCorners(22))
+                                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                            .placeholder(R.drawable.placeholder_recipe)
+                                            .error(R.drawable.placeholder_recipe))
+                                    .into(recipeImagePreview);
                             uploadImageToCloudinary(bitmap, false);
                         } else {
                             Log.e(TAG, "Failed to decode bitmap");
-                            imageStatusIcon.setVisibility(View.GONE);
+                            recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
                         }
                     } catch (FileNotFoundException e) {
                         Log.e(TAG, "File not found", e);
-                        imageStatusIcon.setVisibility(View.GONE);
+                        recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
                     }
                 } else {
                     Log.d(TAG, "Recipe image selection cancelled or failed");
-                    imageStatusIcon.setVisibility(View.GONE);
+                    recipeImagePreview.setImageResource(R.drawable.placeholder_recipe);
                 }
             }
     );
@@ -499,7 +649,6 @@ public class ProfileFragment extends Fragment {
                 if (file == null) {
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(requireContext(), "Error preparing image for upload", Toast.LENGTH_SHORT).show();
-                        imageStatusIcon.setVisibility(View.GONE);
                     });
                     return;
                 }
@@ -522,23 +671,28 @@ public class ProfileFragment extends Fragment {
                         });
                     } else {
                         recipeImageUrl = imageUrl;
+                        String finalImageUrl1 = imageUrl;
                         requireActivity().runOnUiThread(() -> {
-                            imageStatusIcon.setImageResource(R.drawable.ic_check);
-                            imageStatusIcon.setVisibility(View.VISIBLE);
+                            Glide.with(requireContext())
+                                    .load(finalImageUrl1)
+                                    .apply(new RequestOptions()
+                                            .transform(new RoundedCorners(22))
+                                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                            .placeholder(R.drawable.placeholder_recipe)
+                                            .error(R.drawable.placeholder_recipe))
+                                    .into(recipeImagePreview);
                         });
                     }
                     Log.d(TAG, "Image uploaded: " + imageUrl);
                 } else {
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(requireContext(), "Image upload returned no URL", Toast.LENGTH_SHORT).show();
-                        imageStatusIcon.setVisibility(View.GONE);
                     });
                     Log.e(TAG, "No URL returned from Cloudinary");
                 }
             } catch (Exception e) {
                 requireActivity().runOnUiThread(() -> {
                     Toast.makeText(requireContext(), "Failed to upload image: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    imageStatusIcon.setVisibility(View.GONE);
                 });
                 Log.e(TAG, "Upload error", e);
             }
@@ -585,8 +739,8 @@ public class ProfileFragment extends Fragment {
                 .addOnFailureListener(e -> {
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(requireContext(), "Failed to save profile picture: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                        Log.e(TAG, "Failed to save profile picture for user: " + userId + ", error: " + e.getMessage(), e);
                     });
+                    Log.e(TAG, "Failed to save profile picture for user: " + userId + ", error: " + e.getMessage(), e);
                 });
     }
 

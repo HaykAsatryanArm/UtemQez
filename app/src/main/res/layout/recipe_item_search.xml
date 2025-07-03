@@ -18,8 +18,8 @@
 
         <ImageView
             android:id="@+id/recipeImage"
-            android:layout_width="130dp"
-            android:layout_height="130dp"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
             android:scaleType="centerCrop"
             android:clipToOutline="true"
             android:outlineProvider="background"
@@ -34,6 +34,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:layout_marginStart="12dp"
+            app:layout_constrainedWidth="true"
             app:layout_constraintStart_toEndOf="@id/recipeImage"
             app:layout_constraintEnd_toStartOf="@id/deleteButton"
             app:layout_constraintTop_toTopOf="parent"
@@ -49,7 +50,8 @@
                 android:ellipsize="end"
                 android:paddingTop="4dp"
                 android:paddingEnd="8dp"
-                android:text="Recipe Titledadadadadadadadadadadadadsasadasdasdas"
+                android:text="Recipe Title"
+                app:layout_constraintWidth_max="wrap"
                 tools:ignore="HardcodedText,RtlSymmetry" />
 
             <LinearLayout
@@ -92,6 +94,7 @@
                 android:textColor="@color/white"
                 android:background="@drawable/button_background"
                 android:layout_gravity="bottom"
+                app:layout_constraintWidth_max="140dp"
                 tools:ignore="HardcodedText" />
 
         </LinearLayout>
@@ -106,8 +109,7 @@
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:padding="8dp" />
+            android:padding="4dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 </androidx.cardview.widget.CardView>
